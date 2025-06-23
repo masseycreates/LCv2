@@ -1,10 +1,11 @@
-// src/App.jsx - Clean modular structure
+// src/App.jsx - Updated with notifications
 import React, { useState } from 'react';
 import { AppProvider } from './contexts/AppContext';
 import { LotteryProvider } from './contexts/LotteryContext';
 import Header from './components/layout/Header';
 import Navigation from './components/layout/Navigation';
 import Footer from './components/layout/Footer';
+import Notifications from './components/ui/Notifications';
 
 // Import feature components
 import QuickSelection from './components/features/lottery/QuickSelection';
@@ -18,31 +19,31 @@ import './styles/globals/index.css';
 const TAB_CONFIG = {
   'quick-pick': {
     id: 'quick-pick',
-    label: '🎯 Quick Pick',
-    icon: '🎯',
+    label: '?? AI Hybrid',
+    icon: '??',
     component: QuickSelection,
-    description: 'AI-powered generation'
+    description: 'Claude + Algorithms'
   },
   'manual': {
     id: 'manual',
-    label: '🎲 Manual',
-    icon: '🎲',
+    label: '?? Manual',
+    icon: '??',
     component: NumberSelector,
-    description: 'Choose your numbers'
+    description: 'Choose numbers'
   },
   'tax': {
     id: 'tax',
-    label: '🧮 Tax Calc',
-    icon: '💰',
+    label: '?? Tax Calc',
+    icon: '??',
     component: TaxCalculator,
     description: 'Calculate taxes'
   },
   'analysis': {
     id: 'analysis',
-    label: '📊 Analysis',
-    icon: '📈',
+    label: '?? Analysis',
+    icon: '??',
     component: DataAnalysis,
-    description: 'View statistics'
+    description: 'Data insights'
   }
 };
 
@@ -69,6 +70,9 @@ function App() {
           </main>
           
           <Footer />
+          
+          {/* Global Notifications */}
+          <Notifications />
         </div>
       </LotteryProvider>
     </AppProvider>
@@ -76,5 +80,3 @@ function App() {
 }
 
 export default App;
-
-// ------------------
