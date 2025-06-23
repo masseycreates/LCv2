@@ -1,58 +1,19 @@
 // src/components/features/analysis/DataAnalysis.jsx
 import React from 'react';
-import { useLottery } from '@/contexts/LotteryContext';
+import Card from '../../ui/Card';
 
 function DataAnalysis() {
-  const { historicalStats, liveDataAvailable } = useLottery();
-
   return (
-    <div className="space-y-6">
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-4">📊 Data Analysis</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-sm mb-2">Live Data Status</h4>
-            <p className="text-sm text-gray-700">
-              {liveDataAvailable ? '✅ Connected' : '❌ Unavailable'}
-            </p>
-          </div>
-          
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-sm mb-2">Historical Data</h4>
-            <p className="text-sm text-gray-700">
-              {historicalStats ? `${historicalStats.totalDrawings} drawings` : 'Loading...'}
-            </p>
-          </div>
+    <Card>
+      <div className="text-center py-12">
+        <div className="text-4xl mb-4">??</div>
+        <h3 className="text-lg font-semibold mb-2">Data Analysis</h3>
+        <p className="text-gray-600">Historical data and statistics</p>
+        <div className="mt-6 p-4 bg-purple-50 rounded-lg">
+          <p className="text-sm text-purple-700">Coming next: Advanced data analysis tools</p>
         </div>
-
-        {historicalStats && (
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium text-sm mb-2">🔥 Hot Numbers</h4>
-              <div className="flex flex-wrap gap-2">
-                {historicalStats.hotNumbers?.slice(0, 10).map(num => (
-                  <span key={num} className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">
-                    {num}
-                  </span>
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-medium text-sm mb-2">❄️ Cold Numbers</h4>
-              <div className="flex flex-wrap gap-2">
-                {historicalStats.coldNumbers?.slice(0, 10).map(num => (
-                  <span key={num} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-                    {num}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+    </Card>
   );
 }
 
