@@ -1,6 +1,5 @@
-// src/components/layout/Navigation.jsx - Tab Navigation
+// src/components/layout/Navigation.jsx
 import React from 'react';
-import clsx from 'clsx';
 
 function Navigation({ tabs, activeTab, onTabChange }) {
   return (
@@ -10,13 +9,14 @@ function Navigation({ tabs, activeTab, onTabChange }) {
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={clsx(
-              'flex-1 px-4 py-3 text-sm font-medium rounded-md transition-colors',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-              activeTab === tab.id
+            className={`
+              flex-1 px-4 py-3 text-sm font-medium rounded-md transition-colors
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+              ${activeTab === tab.id
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-            )}
+              }
+            `}
           >
             <div className="flex items-center justify-center gap-2">
               <span className="text-lg">{tab.icon}</span>

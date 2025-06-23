@@ -1,8 +1,7 @@
-// src/components/ui/Banner.jsx - Notification Banner Component
+// src/components/ui/Banner.jsx
 import React from 'react';
-import clsx from 'clsx';
 
-function Banner({ children, type = 'info', dismissible = false, onDismiss, className }) {
+function Banner({ children, type = 'info', dismissible = false, onDismiss, className = '' }) {
   const baseClasses = 'rounded-lg p-4 mb-4';
   
   const types = {
@@ -14,15 +13,15 @@ function Banner({ children, type = 'info', dismissible = false, onDismiss, class
   };
 
   const icons = {
-    info: 'ℹ️',
-    success: '✅',
-    warning: '⚠️',
-    error: '❌',
-    claude: '🤖'
+    info: '??',
+    success: '?',
+    warning: '??',
+    error: '?',
+    claude: '??'
   };
 
   return (
-    <div className={clsx(baseClasses, types[type], className)}>
+    <div className={`${baseClasses} ${types[type]} ${className}`}>
       <div className="flex items-start">
         <span className="text-lg mr-3 mt-0.5">{icons[type]}</span>
         <div className="flex-1">{children}</div>
@@ -31,7 +30,7 @@ function Banner({ children, type = 'info', dismissible = false, onDismiss, class
             onClick={onDismiss}
             className="ml-3 text-current opacity-60 hover:opacity-100"
           >
-            ✕
+            ?
           </button>
         )}
       </div>
@@ -39,6 +38,6 @@ function Banner({ children, type = 'info', dismissible = false, onDismiss, class
   );
 }
 
-export { Banner };
+export default Banner;
 
 // ------------------

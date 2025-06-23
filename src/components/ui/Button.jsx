@@ -1,6 +1,5 @@
-// src/components/ui/Button.jsx - Reusable Button Component
+// src/components/ui/Button.jsx
 import React from 'react';
-import clsx from 'clsx';
 
 function Button({ 
   children, 
@@ -8,7 +7,7 @@ function Button({
   size = 'medium',
   disabled = false,
   loading = false,
-  className,
+  className = '',
   ...props 
 }) {
   const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
@@ -29,13 +28,13 @@ function Button({
 
   return (
     <button 
-      className={clsx(
-        baseClasses, 
-        variants[variant], 
-        sizes[size], 
-        { 'opacity-50 cursor-not-allowed': disabled || loading },
-        className
-      )}
+      className={`
+        ${baseClasses} 
+        ${variants[variant]} 
+        ${sizes[size]} 
+        ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''}
+        ${className}
+      `}
       disabled={disabled || loading}
       {...props}
     >
@@ -50,6 +49,6 @@ function Button({
   );
 }
 
-export { Button };
+export default Button;
 
 // ------------------

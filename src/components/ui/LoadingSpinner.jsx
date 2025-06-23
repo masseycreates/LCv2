@@ -1,8 +1,7 @@
-// src/components/ui/LoadingSpinner.jsx - Loading Component
+// src/components/ui/LoadingSpinner.jsx
 import React from 'react';
-import clsx from 'clsx';
 
-function LoadingSpinner({ size = 'medium', className }) {
+function LoadingSpinner({ size = 'medium', className = '' }) {
   const sizes = {
     small: 'h-4 w-4',
     medium: 'h-8 w-8',
@@ -10,10 +9,8 @@ function LoadingSpinner({ size = 'medium', className }) {
   };
 
   return (
-    <div className={clsx('animate-spin rounded-full border-2 border-gray-300 border-t-blue-600', sizes[size], className)}></div>
+    <div className={`animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 ${sizes[size]} ${className}`}></div>
   );
 }
 
-export { LoadingSpinner };
-
-// ------------------
+export default LoadingSpinner;
