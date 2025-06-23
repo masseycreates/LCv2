@@ -1,4 +1,4 @@
-// vite.config.js - Clean configuration for LCv2
+// vite.config.js - Fixed configuration for LCv2
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
@@ -25,14 +25,15 @@ export default defineConfig({
     open: true
   },
 
-  // Build optimization
+  // Build optimization - REMOVED manual chunks that reference missing files
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
-          lottery: ['./src/services/algorithms/predictor.js'],
-          ui: ['./src/components/ui']
+          vendor: ['react', 'react-dom']
+          // Removed references to files that don't exist yet:
+          // lottery: ['./src/services/algorithms/predictor.js'],
+          // ui: ['./src/components/ui']
         }
       }
     }
