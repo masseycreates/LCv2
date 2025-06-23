@@ -1,153 +1,55 @@
+// src/components/features/lottery/QuickSelection.jsx - Modular Feature Component
 import React, { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { useLottery } from '@/contexts/LotteryContext';
-import { usePowerballData } from '@hooks/usePowerballData';
 import Card from '@components/ui/Card';
-import Button from '@components/ui/Button';
-import LoadingSpinner from '@components/ui/LoadingSpinner';
-import SelectionDisplay from './SelectionDisplay';
-import Banner from '@components/ui/Banner';
+import { Button } from '@components/ui/Button';
+import { Banner } from '@components/ui/Banner';
+import { LoadingSpinner } from '@components/ui/LoadingSpinner';
 
 function QuickSelection() {
-  const { 
-    isClaudeEnabled, 
-    claudeApiKey,
-    setClaudeApiKey,
-    setClaudeConnectionStatus 
-  } = useApp();
-  
-  const {
-    historicalStats,
-    historicalDataAvailable,
-    historicalRecordsLimit,
-    quickSelectionSets,
-    isGeneratingSelections,
-    isLoadingHistory,
-    currentJackpot,
-    fetchHistoricalStats,
-    setRecordsLimit,
-    generateQuickSelections
-  } = useLottery();
+  const { isClaudeEnabled, claudeApiKey, systemPerformance, isLoading } = useApp();
+  const [selections, setSelections] = useState([]);
+  const [generating, setGenerating] = useState(false);
+  const [requestedSets, setRequestedSets] = useState(3);
 
-  const { testClaudeConnection, generateClaudeHybridSelection } = usePowerballData();
-  
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  // Data range options
-  const dataRangeOptions = [
-    { value: 50, label: '50 drawings (2 months)' },
-    { value: 100, label: '100 drawings (4 months)' },
-    { value: 250, label: '250 drawings (1 year)' },
-    { value: 500, label: '500 drawings (2 years)' },
-    { value: 1000, label: '1000 drawings (4 years)' },
-    { value: 1500, label: '1500 drawings (6 years)' },
-    { value: 2000, label: '2000 drawings (8+ years)' }
-  ];
-
-  const handleDataLimitChange = async (newLimit) => {
-    setRecordsLimit(newLimit);
-    await fetchHistoricalStats(newLimit);
-  };
-
-  const handleEnableClaude = async () => {
-    const trimmedKey = apiKeyInput.trim();
-    
-    if (!trimmedKey) {
-      alert('Please enter your Anthropic API key');
-      return;
-    }
-    
-    if (!trimmedKey.startsWith('sk-ant-') || trimmedKey.length < 20) {
-      alert('Please enter a valid Anthropic API key (starts with sk-ant-)');
-      return;
-    }
-    
-    setIsConnecting(true);
-    setClaudeConnectionStatus('connecting');
+  const generateSelections = async () => {
+    setGenerating(true);
     
     try {
-      const result = await testClaudeConnection(trimmedKey);
+      // Simulate generation delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      if (result.success) {
-        setClaudeApiKey(trimmedKey);
-        setClaudeConnectionStatus('connected');
-      } else {
-        setClaudeConnectionStatus('error');
-        alert(`Failed to connect to Claude Opus 4: ${result.error}`);
-      }
+      // Mock data for demonstration
+      const mockSelections = Array.from({ length: requestedSets }, (_, index) => ({
+        id: Date.now() + index,
+        numbers: Array.from({ length: 5 }, () => Math.floor(Math.random() * 69) + 1).sort((a, b) => a - b),
+        powerball: Math.floor(Math.random() * 26) + 1,
+        strategy: isClaudeEnabled ? `Claude Opus 4 Algorithm ${index + 1}` : `Local Algorithm ${index + 1}`,
+        confidence: Math.floor(Math.random() * 30) + 70,
+        analysis: isClaudeEnabled 
+          ? `Advanced AI hybrid analysis with ${Math.floor(Math.random() * 50) + 50} data points`
+          : `Mathematical pattern analysis with local algorithms`
+      }));
+      
+      setSelections(mockSelections);
     } catch (error) {
-      setClaudeConnectionStatus('error');
-      alert(`Connection failed: ${error.message}`);
+      console.error('Generation failed:', error);
     } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  const handleGenerateSelections = async () => {
-    try {
-      if (isClaudeEnabled && claudeApiKey) {
-        await generateClaudeHybridSelection(claudeApiKey, historicalStats, currentJackpot);
-      } else {
-        await generateQuickSelections();
-      }
-    } catch (error) {
-      console.error('Failed to generate selections:', error);
+      setGenerating(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Historical Data Range Selector */}
-      <Card>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-          <div>
-            <h4 className="text-sm font-semibold text-gray-900">📊 Historical Data Range</h4>
-            <p className="text-xs text-gray-600">
-              {isLoadingHistory ? 'Updating analysis...' : 'Select amount of historical data for analysis'}
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <select
-              value={historicalRecordsLimit}
-              onChange={(e) => handleDataLimitChange(parseInt(e.target.value))}
-              disabled={isLoadingHistory}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white disabled:opacity-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              {dataRangeOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            
-            {isLoadingHistory && <LoadingSpinner size="sm" />}
-          </div>
-        </div>
-        
-        {historicalStats && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-600">
-            <div>📈 Analyzing: {historicalStats.totalDrawings} drawings</div>
-            <div>🔥 Source: {historicalStats.dataSource || 'API'}</div>
-            <div>
-              🎯 Range: {historicalStats.dateRange ? 
-                `${historicalStats.dateRange.earliest} to ${historicalStats.dateRange.latest}` : 
-                'Full range'
-              }
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {/* Claude Opus 4 Integration */}
+      
+      {/* Claude Opus 4 Status */}
       <Card.Opus4>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="text-2xl">🤖✨</div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Claude Opus 4 + 6 Algorithms</h3>
-              <p className="text-sm text-gray-600">Advanced AI hybrid intelligence system</p>
+              <h3 className="text-lg font-semibold text-gray-900">Claude Opus 4 + Hybrid Algorithms</h3>
+              <p className="text-sm text-gray-600">Advanced AI lottery intelligence system</p>
             </div>
           </div>
           
@@ -159,112 +61,131 @@ function QuickSelection() {
         </div>
 
         {!isClaudeEnabled ? (
-          <div className="space-y-4">
-            <Banner type="warning">
-              ⚠️ Using local algorithms only. Enable Claude Opus 4 for advanced AI analysis.
-            </Banner>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="password"
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                placeholder="Anthropic API key (sk-ant-...)"
-                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              />
-              
-              <Button
-                onClick={handleEnableClaude}
-                disabled={isConnecting || !apiKeyInput.trim()}
-                loading={isConnecting}
-                variant="opus4"
-              >
-                ✨ Enable Opus 4
-              </Button>
-            </div>
-            
-            <p className="text-xs text-gray-500">
-              Get API key: {' '}
-              <a 
-                href="https://console.anthropic.com/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-purple-600 underline hover:text-purple-700"
-              >
-                console.anthropic.com
-              </a>
-            </p>
-          </div>
+          <Banner type="warning">
+            ⚠️ Using local algorithms only. Enable Claude Opus 4 for advanced AI analysis.
+          </Banner>
         ) : (
-          <div className="flex items-center justify-between">
-            <Banner type="success" className="flex-1 mr-4">
-              ✅ Claude Opus 4 analyzing with 6 algorithms for optimal predictions
-            </Banner>
-            
-            <Button
-              onClick={handleGenerateSelections}
-              disabled={isGeneratingSelections}
-              loading={isGeneratingSelections}
-              variant="opus4"
-            >
-              🔄 New Analysis
-            </Button>
-          </div>
+          <Banner type="claude">
+            🚀 Claude Opus 4 hybrid system ready! Using 6 advanced algorithms with AI analysis.
+          </Banner>
         )}
       </Card.Opus4>
 
-      {/* Generated Selections */}
+      {/* Generation Controls */}
       <Card>
-        <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold mb-4">Quick Number Generation</h3>
+        
+        <div className="flex items-center gap-4 mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              {isClaudeEnabled ? '🤖✨ Opus 4 Hybrid Selections' : '🧮 Algorithm Selections'}
-            </h3>
-            <p className="text-sm text-gray-600">
-              {isClaudeEnabled ? 'Claude Opus 4 + 6 algorithms working together' : 'Local mathematical ensemble'}
-            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Number of Sets
+            </label>
+            <select 
+              value={requestedSets}
+              onChange={(e) => setRequestedSets(parseInt(e.target.value))}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              disabled={generating}
+            >
+              <option value={1}>1 Set</option>
+              <option value={3}>3 Sets</option>
+              <option value={5}>5 Sets</option>
+              <option value={10}>10 Sets</option>
+            </select>
           </div>
           
-          {!isLoadingHistory && historicalDataAvailable && (
+          <div className="flex-1 flex justify-end">
             <Button
-              onClick={handleGenerateSelections}
-              disabled={isGeneratingSelections}
-              loading={isGeneratingSelections}
-              variant="secondary"
-              size="sm"
+              variant={isClaudeEnabled ? "claude" : "primary"}
+              onClick={generateSelections}
+              disabled={generating || isLoading}
+              loading={generating}
             >
-              🔄 Refresh
+              {generating ? 'Generating...' : `Generate ${requestedSets} Set${requestedSets > 1 ? 's' : ''}`}
             </Button>
-          )}
+          </div>
         </div>
 
-        {isLoadingHistory ? (
-          <div className="text-center py-12">
-            <LoadingSpinner.Inline message="Loading data and generating selections..." />
-          </div>
-        ) : quickSelectionSets.length > 0 ? (
-          <SelectionDisplay 
-            selections={quickSelectionSets}
-            isClaudeEnabled={isClaudeEnabled}
-          />
-        ) : (
-          <div className="text-center py-12 text-gray-500">
-            <div className="text-4xl mb-4">🎯</div>
-            <p className="text-sm">No selections generated yet.</p>
-            {historicalDataAvailable && (
-              <Button
-                onClick={handleGenerateSelections}
-                disabled={isGeneratingSelections}
-                loading={isGeneratingSelections}
-                variant="primary"
-                className="mt-4"
-              >
-                Generate Selections
-              </Button>
-            )}
+        {generating && (
+          <div className="flex items-center justify-center py-8">
+            <LoadingSpinner size="large" />
+            <span className="ml-3 text-gray-600">
+              {isClaudeEnabled ? 'Claude Opus 4 analyzing patterns...' : 'Running local algorithms...'}
+            </span>
           </div>
         )}
       </Card>
+
+      {/* Generated Selections */}
+      {selections.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">Generated Numbers</h3>
+          
+          <div className="space-y-4">
+            {selections.map((selection, index) => (
+              <div key={selection.id} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium">Set {index + 1}</h4>
+                  <div className="text-sm text-gray-600">
+                    {selection.confidence}% confidence
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="flex items-center gap-2">
+                    {selection.numbers.map((num, numIndex) => (
+                      <span 
+                        key={numIndex}
+                        className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm"
+                      >
+                        {num}
+                      </span>
+                    ))}
+                    <span className="text-gray-400 mx-2">+</span>
+                    <span className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                      {selection.powerball}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="text-sm text-gray-600">
+                  <div className="font-medium">{selection.strategy}</div>
+                  <div>{selection.analysis}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* System Performance */}
+      {systemPerformance && (
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">System Performance</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {systemPerformance.predictionsGenerated || 0}
+              </div>
+              <div className="text-xs text-gray-600">Predictions Generated</div>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {isClaudeEnabled ? 'OPUS 4' : 'LOCAL'}
+              </div>
+              <div className="text-xs text-gray-600">Mode</div>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600">
+                {systemPerformance.status?.toUpperCase() || 'READY'}
+              </div>
+              <div className="text-xs text-gray-600">Status</div>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

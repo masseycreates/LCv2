@@ -1,52 +1,36 @@
+// src/components/ui/Banner.jsx - Notification Banner Component
 import React from 'react';
 import clsx from 'clsx';
 
-function Banner({ 
-  children, 
-  type = 'info',
-  size = 'md',
-  className,
-  onClose,
-  ...props 
-}) {
-  const baseClasses = 'rounded-lg border font-medium';
+function Banner({ children, type = 'info', dismissible = false, onDismiss, className }) {
+  const baseClasses = 'rounded-lg p-4 mb-4';
   
   const types = {
-    info: 'bg-blue-50 border-blue-200 text-blue-800',
-    success: 'bg-green-50 border-green-200 text-green-800',
-    warning: 'bg-amber-50 border-amber-200 text-amber-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-    opus4Warning: 'bg-purple-50 border-purple-200 text-purple-800',
-    opus4Success: 'bg-green-50 border-green-200 text-green-800'
+    info: 'bg-blue-50 text-blue-800 border border-blue-200',
+    success: 'bg-green-50 text-green-800 border border-green-200',
+    warning: 'bg-yellow-50 text-yellow-800 border border-yellow-200',
+    error: 'bg-red-50 text-red-800 border border-red-200',
+    claude: 'bg-gradient-to-r from-purple-50 to-blue-50 text-purple-800 border border-purple-200'
   };
-  
-  const sizes = {
-    sm: 'p-2 text-xs',
-    md: 'p-3 text-sm',
-    lg: 'p-4 text-base'
+
+  const icons = {
+    info: 'ℹ️',
+    success: '✅',
+    warning: '⚠️',
+    error: '❌',
+    claude: '🤖'
   };
 
   return (
-    <div
-      className={clsx(
-        baseClasses,
-        types[type],
-        sizes[size],
-        className
-      )}
-      {...props}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          {children}
-        </div>
-        
-        {onClose && (
+    <div className={clsx(baseClasses, types[type], className)}>
+      <div className="flex items-start">
+        <span className="text-lg mr-3 mt-0.5">{icons[type]}</span>
+        <div className="flex-1">{children}</div>
+        {dismissible && onDismiss && (
           <button
-            onClick={onClose}
-            className="ml-3 text-current opacity-70 hover:opacity-100 transition-opacity"
+            onClick={onDismiss}
+            className="ml-3 text-current opacity-60 hover:opacity-100"
           >
-            <span className="sr-only">Close</span>
             ✕
           </button>
         )}
@@ -55,4 +39,6 @@ function Banner({
   );
 }
 
-export default Banner;
+export { Banner };
+
+// ------------------

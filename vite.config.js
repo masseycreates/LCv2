@@ -1,15 +1,12 @@
-// This file tells Vite (your build tool) how to handle your project
+// vite.config.js - Clean configuration for LCv2
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
-// Think of this configuration like setting up rules for how your workshop operates
 export default defineConfig({
-  // Tell Vite that this is a React project
   plugins: [react()],
   
-  // Set up shortcuts so you can import files more easily
-  // Instead of writing "../../../components/Button" you can write "@components/Button"
+  // Path aliases for cleaner imports
   resolve: {
     alias: {
       '@': resolve(process.cwd(), 'src'),
@@ -22,9 +19,22 @@ export default defineConfig({
     }
   },
 
-  // Configure the development server
+  // Development server settings
   server: {
-    port: 3000,  // Your app will run on http://localhost:3000
-    open: true   // Automatically open your browser when you start the server
+    port: 3000,
+    open: true
+  },
+
+  // Build optimization
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          lottery: ['./src/services/algorithms/predictor.js'],
+          ui: ['./src/components/ui']
+        }
+      }
+    }
   }
 })

@@ -1,83 +1,74 @@
+// src/contexts/AppContext.jsx - Global app state management
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
-const AppContext = createContext();
-
+// Initial state
 const initialState = {
-  // Claude AI Integration
-  claudeApiKey: '',
+  // System status
+  systemStatus: 'initializing', // 'initializing' | 'ready' | 'error'
+  dataStatus: 'Initializing system...',
+  
+  // Claude Opus 4 integration
   isClaudeEnabled: false,
-  isClaudeLoading: false,
-  claudeConnectionStatus: 'disconnected', // 'disconnected', 'connecting', 'connected', 'error'
+  claudeApiKey: '',
   
-  // System Status
-  systemStatus: 'initializing', // 'initializing', 'ready', 'error'
-  lastUpdated: null,
-  dataStatus: '',
-  
-  // UI State
-  notifications: [],
-  isUpdating: false,
-  
-  // Performance Metrics
+  // Performance metrics
   systemPerformance: {
     isLearning: false,
     predictionsGenerated: 0,
-    averageHitRate: 16.5,
-    status: 'excellent'
-  }
+    averageHitRate: 0,
+    status: 'initializing'
+  },
+  
+  // Notifications
+  notifications: [],
+  
+  // UI state
+  isLoading: false,
+  lastUpdated: null
 };
 
+// Action types
+const ActionTypes = {
+  SET_SYSTEM_STATUS: 'SET_SYSTEM_STATUS',
+  SET_DATA_STATUS: 'SET_DATA_STATUS',
+  SET_CLAUDE_ENABLED: 'SET_CLAUDE_ENABLED',
+  SET_CLAUDE_API_KEY: 'SET_CLAUDE_API_KEY',
+  UPDATE_PERFORMANCE_METRICS: 'UPDATE_PERFORMANCE_METRICS',
+  ADD_NOTIFICATION: 'ADD_NOTIFICATION',
+  REMOVE_NOTIFICATION: 'REMOVE_NOTIFICATION',
+  SET_LOADING: 'SET_LOADING',
+  SET_LAST_UPDATED: 'SET_LAST_UPDATED'
+};
+
+// Reducer function
 function appReducer(state, action) {
   switch (action.type) {
-    case 'SET_CLAUDE_API_KEY':
+    case ActionTypes.SET_SYSTEM_STATUS:
       return {
         ...state,
-        claudeApiKey: action.payload,
-        isClaudeEnabled: action.payload.trim().length > 0
+        systemStatus: action.payload
       };
       
-    case 'SET_CLAUDE_CONNECTION_STATUS':
-      return {
-        ...state,
-        claudeConnectionStatus: action.payload,
-        isClaudeLoading: action.payload === 'connecting'
-      };
-      
-    case 'SET_SYSTEM_STATUS':
-      return {
-        ...state,
-        systemStatus: action.payload,
-        lastUpdated: new Date().toISOString()
-      };
-      
-    case 'SET_DATA_STATUS':
+    case ActionTypes.SET_DATA_STATUS:
       return {
         ...state,
         dataStatus: action.payload
       };
       
-    case 'SET_UPDATING':
+    case ActionTypes.SET_CLAUDE_ENABLED:
       return {
         ...state,
-        isUpdating: action.payload
+        isClaudeEnabled: action.payload
       };
       
-    case 'ADD_NOTIFICATION':
+    case ActionTypes.SET_CLAUDE_API_KEY:
       return {
         ...state,
-        notifications: [...state.notifications, {
-          id: Date.now(),
-          ...action.payload
-        }]
+        claudeApiKey: action.payload,
+        isClaudeEnabled: action.payload ? true : false
       };
       
-    case 'REMOVE_NOTIFICATION':
-      return {
-        ...state,
-        notifications: state.notifications.filter(n => n.id !== action.payload)
-      };
-      
-    case 'UPDATE_PERFORMANCE_METRICS':
+    case ActionTypes.UPDATE_PERFORMANCE_METRICS:
       return {
         ...state,
         systemPerformance: {
@@ -86,11 +77,46 @@ function appReducer(state, action) {
         }
       };
       
+    case ActionTypes.ADD_NOTIFICATION:
+      return {
+        ...state,
+        notifications: [
+          ...state.notifications,
+          {
+            id: Date.now(),
+            timestamp: new Date().toISOString(),
+            ...action.payload
+          }
+        ]
+      };
+      
+    case ActionTypes.REMOVE_NOTIFICATION:
+      return {
+        ...state,
+        notifications: state.notifications.filter(n => n.id !== action.payload)
+      };
+      
+    case ActionTypes.SET_LOADING:
+      return {
+        ...state,
+        isLoading: action.payload
+      };
+      
+    case ActionTypes.SET_LAST_UPDATED:
+      return {
+        ...state,
+        lastUpdated: action.payload || new Date().toISOString()
+      };
+      
     default:
       return state;
   }
 }
 
+// Create context
+const AppContext = createContext();
+
+// Provider component
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
@@ -98,28 +124,37 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        dispatch({ type: 'SET_DATA_STATUS', payload: '🚀 Initializing hybrid Claude Opus 4 + 6 algorithms system...' });
+        dispatch({ 
+          type: ActionTypes.SET_DATA_STATUS, 
+          payload: '🚀 Initializing LCv2 modular system...' 
+        });
         
         // Simulate initialization delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        dispatch({ type: 'SET_SYSTEM_STATUS', payload: 'ready' });
-        dispatch({ type: 'SET_DATA_STATUS', payload: '✅ System initialized and ready' });
+        dispatch({ type: ActionTypes.SET_SYSTEM_STATUS, payload: 'ready' });
+        dispatch({ 
+          type: ActionTypes.SET_DATA_STATUS, 
+          payload: '✅ LCv2 system initialized and ready' 
+        });
+        dispatch({ type: ActionTypes.SET_LAST_UPDATED });
         
         // Update performance metrics
         dispatch({ 
-          type: 'UPDATE_PERFORMANCE_METRICS', 
+          type: ActionTypes.UPDATE_PERFORMANCE_METRICS, 
           payload: {
             isLearning: true,
-            predictionsGenerated: 0,
             status: 'excellent'
           }
         });
         
       } catch (error) {
         console.error('App initialization failed:', error);
-        dispatch({ type: 'SET_SYSTEM_STATUS', payload: 'error' });
-        dispatch({ type: 'SET_DATA_STATUS', payload: '❌ System initialization failed' });
+        dispatch({ type: ActionTypes.SET_SYSTEM_STATUS, payload: 'error' });
+        dispatch({ 
+          type: ActionTypes.SET_DATA_STATUS, 
+          payload: '❌ System initialization failed' 
+        });
       }
     };
 
@@ -128,40 +163,15 @@ export function AppProvider({ children }) {
 
   // Action creators
   const actions = {
-    setClaudeApiKey: (apiKey) => {
-      dispatch({ type: 'SET_CLAUDE_API_KEY', payload: apiKey });
-    },
-    
-    setClaudeConnectionStatus: (status) => {
-      dispatch({ type: 'SET_CLAUDE_CONNECTION_STATUS', payload: status });
-    },
-    
-    setDataStatus: (status) => {
-      dispatch({ type: 'SET_DATA_STATUS', payload: status });
-    },
-    
-    setUpdating: (isUpdating) => {
-      dispatch({ type: 'SET_UPDATING', payload: isUpdating });
-    },
-    
-    addNotification: (notification) => {
-      dispatch({ type: 'ADD_NOTIFICATION', payload: notification });
-      
-      // Auto-remove after 5 seconds if not persistent
-      if (!notification.persistent) {
-        setTimeout(() => {
-          dispatch({ type: 'REMOVE_NOTIFICATION', payload: notification.id });
-        }, 5000);
-      }
-    },
-    
-    removeNotification: (id) => {
-      dispatch({ type: 'REMOVE_NOTIFICATION', payload: id });
-    },
-    
-    updatePerformanceMetrics: (metrics) => {
-      dispatch({ type: 'UPDATE_PERFORMANCE_METRICS', payload: metrics });
-    }
+    setSystemStatus: (status) => dispatch({ type: ActionTypes.SET_SYSTEM_STATUS, payload: status }),
+    setDataStatus: (status) => dispatch({ type: ActionTypes.SET_DATA_STATUS, payload: status }),
+    setClaudeEnabled: (enabled) => dispatch({ type: ActionTypes.SET_CLAUDE_ENABLED, payload: enabled }),
+    setClaudeApiKey: (key) => dispatch({ type: ActionTypes.SET_CLAUDE_API_KEY, payload: key }),
+    updatePerformanceMetrics: (metrics) => dispatch({ type: ActionTypes.UPDATE_PERFORMANCE_METRICS, payload: metrics }),
+    addNotification: (notification) => dispatch({ type: ActionTypes.ADD_NOTIFICATION, payload: notification }),
+    removeNotification: (id) => dispatch({ type: ActionTypes.REMOVE_NOTIFICATION, payload: id }),
+    setLoading: (loading) => dispatch({ type: ActionTypes.SET_LOADING, payload: loading }),
+    setLastUpdated: () => dispatch({ type: ActionTypes.SET_LAST_UPDATED })
   };
 
   const value = {
@@ -176,6 +186,7 @@ export function AppProvider({ children }) {
   );
 }
 
+// Custom hook to use the context
 export function useApp() {
   const context = useContext(AppContext);
   if (!context) {
