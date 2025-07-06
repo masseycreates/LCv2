@@ -30,11 +30,12 @@ function QuickSelection() {
   const [historicalData, setHistoricalData] = useState(null);
   const [loadingData, setLoadingData] = useState(false);
   const [localError, setLocalError] = useState(null);
-  const [selectedModel, setSelectedModel] = useState('claude-3-sonnet-20240229');
+  const [selectedModel, setSelectedModel] = useState('claude-4-opus-20250514');
 
   const availableModels = [
+    { id: 'claude-4-opus-20250514', name: 'Claude Opus 4 (Latest)', description: 'Most advanced model with superior reasoning' },
+    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Previous generation flagship model' },
     { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet (Recommended)', description: 'Balanced performance and speed' },
-    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Most capable model' },
     { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', description: 'Fastest response' }
   ];
 
@@ -261,7 +262,7 @@ function QuickSelection() {
       {/* Claude AI Integration */}
       <Card className={isClaudeEnabled ? 'border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50' : ''}>
         <div className="flex items-center gap-3 mb-4">
-          <div className="text-2xl">??</div>
+          <div className="text-2xl">???</div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
               Claude Opus 4 Integration
@@ -310,6 +311,9 @@ function QuickSelection() {
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {availableModels.find(m => m.id === selectedModel)?.description}
+                </p>
               </div>
             </div>
             
