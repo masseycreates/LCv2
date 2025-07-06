@@ -1,78 +1,133 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LCv2 - Advanced Lottery Intelligence System</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Advanced Lottery Intelligence System - AI-powered lottery predictions and analysis" />
+  <meta name="keywords" content="lottery, powerball, AI, prediction, Claude, tax calculator" />
+  <meta name="author" content="LCv2 Team" />
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  
+  <!-- Preload critical fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- App Title -->
+  <title>LCv2 - Advanced Lottery Intelligence System</title>
+  
+  <!-- Prevent FOUC (Flash of Unstyled Content) -->
+  <style>
+    /* Critical loading styles */
+    #root {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
     
-    <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎰</text></svg>">
+    .loading-container {
+      text-align: center;
+      color: white;
+      animation: pulse 2s infinite;
+    }
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    .loading-emoji {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      animation: spin 2s linear infinite;
+    }
     
-    <!-- Meta Tags -->
-    <meta name="description" content="Advanced Lottery Intelligence System with Claude Sonnet 4 AI and 6 mathematical algorithms">
-    <meta name="keywords" content="lottery, powerball, claude, ai, prediction, tax calculator">
-    <meta name="author" content="LCv2 System">
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
     
-    <!-- Preload critical resources -->
-    <link rel="preconnect" href="https://api.anthropic.com">
-    <link rel="preconnect" href="https://data.ny.gov">
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
     
-    <!-- Custom Tailwind Configuration -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'claude-purple': '#8b5cf6',
-                        'lottery-blue': '#3b82f6',
-                        'success-green': '#10b981',
-                        'warning-orange': '#f59e0b'
-                    },
-                    animation: {
-                        'gradient-shift': 'gradient-shift 3s ease-in-out infinite',
-                        'pulse-soft': 'pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    },
-                    keyframes: {
-                        'gradient-shift': {
-                            '0%, 100%': { 'background-position': '0% 50%' },
-                            '50%': { 'background-position': '100% 50%' }
-                        },
-                        'pulse-soft': {
-                            '0%, 100%': { opacity: '1' },
-                            '50%': { opacity: '0.8' }
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    /* Hide loading once app loads */
+    .app-loaded #loading {
+      display: none;
+    }
+  </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <div id="root">
-        <!-- Loading State -->
-        <div class="min-h-screen flex items-center justify-center">
-            <div class="text-center">
-                <div class="text-6xl mb-4 animate-pulse-soft">🤖✨</div>
-                <div class="text-xl font-semibold text-gray-800 mb-2">
-                    Loading LCv2 System...
-                </div>
-                <div class="text-sm text-gray-600 mb-4">
-                    Claude Sonnet 4 + 6 Algorithms Hybrid
-                </div>
-                <div class="flex justify-center">
-                    <div class="w-8 h-8 border-3 border-claude-purple border-t-transparent rounded-full animate-spin"></div>
-                </div>
-                <div class="mt-4 text-xs text-gray-500">
-                    Initializing modular architecture...
-                </div>
-            </div>
-        </div>
+<body>
+  <!-- Application Root -->
+  <div id="root">
+    <div id="loading" class="loading-container">
+      <div class="loading-emoji">🎰</div>
+      <div>Loading Advanced Lottery System...</div>
+      <div style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.8;">
+        If this doesn't load, check the browser console for errors (F12)
+      </div>
     </div>
+  </div>
+  
+  <!-- Vite will inject the script tag for src/index.jsx -->
+  <script type="module" src="/src/index.jsx"></script>
+  
+  <!-- Error handling for unsupported browsers -->
+  <script>
+    // Basic error handling for older browsers
+    window.addEventListener('error', function(e) {
+      console.error('Application Error:', e);
+      
+      // Show basic error message if React fails to load
+      setTimeout(function() {
+        var root = document.getElementById('root');
+        if (root && root.innerHTML.includes('Loading')) {
+          root.innerHTML = `
+            <div style="
+              text-align: center; 
+              color: white; 
+              padding: 2rem;
+              max-width: 500px;
+              margin: 0 auto;
+            ">
+              <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+              <h2>Application Load Error</h2>
+              <p style="margin: 1rem 0;">
+                The application failed to load properly. This may be due to:
+              </p>
+              <ul style="text-align: left; margin: 1rem 0;">
+                <li>Network connectivity issues</li>
+                <li>Browser compatibility problems</li>
+                <li>JavaScript disabled</li>
+              </ul>
+              <button 
+                onclick="window.location.reload()" 
+                style="
+                  background: #3b82f6; 
+                  color: white; 
+                  border: none; 
+                  padding: 12px 24px; 
+                  border-radius: 6px; 
+                  cursor: pointer;
+                  font-size: 16px;
+                  margin-top: 1rem;
+                "
+              >
+                Reload Page
+              </button>
+            </div>
+          `;
+        }
+      }, 5000); // Wait 5 seconds before showing error
+    });
     
-    <!-- Vite Entry Point -->
-    <script type="module" src="/src/index.js"></script>
+    // Mark when app successfully loads
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        document.body.classList.add('app-loaded');
+      }, 1000);
+    });
+  </script>
 </body>
 </html>

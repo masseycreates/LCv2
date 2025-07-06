@@ -3,11 +3,14 @@
   "version": "2.0.0",
   "description": "Advanced Lottery Intelligence System - Claude Opus 4 Hybrid (Modular Architecture)",
   "type": "module",
+  "main": "src/index.jsx",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -29,5 +32,17 @@
     "tax-calculator"
   ],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
 }

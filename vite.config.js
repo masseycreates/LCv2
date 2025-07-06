@@ -4,15 +4,15 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [
     react({
-      // Enable JSX in .js files
-      include: "**/*.{jsx,js}",
+      // Enable JSX in .js files explicitly
+      include: "**/*.{jsx,js,ts,tsx}",
+      jsxRuntime: 'automatic'
     })
   ],
-  esbuild: {
-    // Enable JSX in .js files
-    loader: 'jsx',
-    include: /src\/.*\.[jt]sx?$/,
-  },
+  
+  // Remove conflicting esbuild configuration
+  // The React plugin handles JSX transformation
+  
   build: {
     outDir: 'dist',
     sourcemap: true,
@@ -26,6 +26,7 @@ export default defineConfig({
       }
     }
   },
+  
   server: {
     port: 3000,
     proxy: {
@@ -34,5 +35,10 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  
+  // Ensure proper file extensions are recognized
+  resolve: {
+    extensions: ['.js', '.jsx', '.ts', '.tsx', '.json']
   }
 })
