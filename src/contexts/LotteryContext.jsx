@@ -132,6 +132,113 @@ function lotteryReducer(state, action) {
   }
 }
 
+// Helper functions for selection generation
+const generateNumbersForSum = (targetSum) => {
+  const numbers = [];
+  let currentSum = 0;
+  const attempts = 1000; // Prevent infinite loops
+  
+  for (let attempt = 0; attempt < attempts && numbers.length < 5; attempt++) {
+    const remainingNumbers = 5 - numbers.length;
+    const remainingSum = targetSum - currentSum;
+    const avgNeeded = remainingSum / remainingNumbers;
+    
+    // Generate number around the average needed
+    const min = Math.max(1, Math.floor(avgNeeded - 10));
+    const max = Math.min(69, Math.ceil(avgNeeded + 10));
+    const candidate = Math.floor(Math.random() * (max - min + 1)) + min;
+    
+    if (!numbers.includes(candidate) && currentSum + candidate <= targetSum) {
+      numbers.push(candidate);
+      currentSum += candidate;
+    }
+  }
+  
+  // Fill remaining slots if needed
+  while (numbers.length < 5) {
+    const candidate = Math.floor(Math.random() * 69) + 1;
+    if (!numbers.includes(candidate)) {
+      numbers.push(candidate);
+    }
+  }
+  
+  return numbers.sort((a, b) => a - b);
+};
+
+const generatePatternNumbers = (analysis) => {
+  const recentDrawings = analysis.drawings?.slice(0, 10) || [];
+  const numbers = [];
+  
+  // Look for patterns in recent drawings
+  if (recentDrawings.length > 0) {
+    // Get numbers that appeared in last 3 drawings
+    const recentNumbers = new Set();
+    recentDrawings.slice(0, 3).forEach(drawing => {
+      drawing.numbers.forEach(num => recentNumbers.add(num));
+    });
+    
+    // Pick 2-3 from recent numbers
+    const recentArray = Array.from(recentNumbers);
+    for (let i = 0; i < Math.min(3, recentArray.length); i++) {
+      if (Math.random() > 0.5) {
+        numbers.push(recentArray[i]);
+      }
+    }
+  }
+  
+  // Fill remaining with hot numbers and randoms
+  const hotNumbers = analysis.numberAnalysis.hotNumbers || [];
+  while (numbers.length < 5) {
+    let candidate;
+    if (numbers.length < 3 && hotNumbers.length > 0) {
+      candidate = hotNumbers[Math.floor(Math.random() * Math.min(10, hotNumbers.length))];
+    } else {
+      candidate = Math.floor(Math.random() * 69) + 1;
+    }
+    
+    if (!numbers.includes(candidate)) {
+      numbers.push(candidate);
+    }
+  }
+  
+  return numbers.sort((a, b) => a - b);
+};
+
+const generateConstrainedRandom = (analysis) => {
+  const numbers = [];
+  const avgSum = analysis.patterns.averageSum;
+  const minSum = avgSum - 30;
+  const maxSum = avgSum + 30;
+  
+  let attempts = 0;
+  while (numbers.length < 5 && attempts < 1000) {
+    const candidate = Math.floor(Math.random() * 69) + 1;
+    if (!numbers.includes(candidate)) {
+      const tempNumbers = [...numbers, candidate];
+      const currentSum = tempNumbers.reduce((sum, num) => sum + num, 0);
+      
+      if (tempNumbers.length === 5) {
+        if (currentSum >= minSum && currentSum <= maxSum) {
+          numbers.push(candidate);
+        }
+      } else {
+        numbers.push(candidate);
+      }
+    }
+    attempts++;
+  }
+  
+  // Fallback if constraints too strict
+  while (numbers.length < 5) {
+    const candidate = Math.floor(Math.random() * 69) + 1;
+    if (!numbers.includes(candidate)) {
+      numbers.push(candidate);
+    }
+  }
+  
+  return numbers.sort((a, b) => a - b);
+};
+
 export function LotteryProvider({ children }) {
   const [state, dispatch] = useReducer(lotteryReducer, initialState);
 
@@ -255,7 +362,7 @@ export function LotteryProvider({ children }) {
 
         // Strategy 4: Sum-Based Selection
         const targetSum = Math.round(analysis.patterns.averageSum);
-        const sumNumbers = this.generateNumbersForSum(targetSum);
+        const sumNumbers = generateNumbersForSum(targetSum);
         selections.push({
           id: `sum-${Date.now()}`,
           name: 'Sum Analysis Strategy',
@@ -270,7 +377,7 @@ export function LotteryProvider({ children }) {
         });
 
         // Strategy 5: Pattern-Based
-        const patternNumbers = this.generatePatternNumbers(analysis);
+        const patternNumbers = generatePatternNumbers(analysis);
         selections.push({
           id: `pattern-${Date.now()}`,
           name: 'Pattern Analysis Strategy',
@@ -285,7 +392,7 @@ export function LotteryProvider({ children }) {
         });
 
         // Strategy 6: Random with Constraints
-        const constrainedNumbers = this.generateConstrainedRandom(analysis);
+        const constrainedNumbers = generateConstrainedRandom(analysis);
         selections.push({
           id: `constrained-${Date.now()}`,
           name: 'Constrained Random Strategy',
@@ -306,39 +413,6 @@ export function LotteryProvider({ children }) {
       } finally {
         dispatch({ type: 'SET_GENERATING_SELECTIONS', payload: false });
       }
-    },
-
-    // Helper function to generate numbers for target sum
-    generateNumbersForSum(targetSum) {
-      const numbers = [];
-      let currentSum = 0;
-      const attempts = 1000; // Prevent infinite loops
-      
-      for (let attempt = 0; attempt < attempts && numbers.length < 5; attempt++) {
-        const remainingNumbers = 5 - numbers.length;
-        const remainingSum = targetSum - currentSum;
-        const avgNeeded = remainingSum / remainingNumbers;
-        
-        // Generate number around the average needed
-        const min = Math.max(1, Math.floor(avgNeeded - 10));
-        const max = Math.min(69, Math.ceil(avgNeeded + 10));
-        const candidate = Math.floor(Math.random() * (max - min + 1)) + min;
-        
-        if (!numbers.includes(candidate) && currentSum + candidate <= targetSum) {
-          numbers.push(candidate);
-          currentSum += candidate;
-        }
-      }
-      
-      // Fill remaining slots if needed
-      while (numbers.length < 5) {
-        const candidate = Math.floor(Math.random() * 69) + 1;
-        if (!numbers.includes(candidate)) {
-          numbers.push(candidate);
-        }
-      }
-      
-      return numbers.sort((a, b) => a - b);
     },
     
     // Manual selection methods
@@ -424,79 +498,3 @@ export function useLottery() {
 }
 
 export default LotteryContext;
-
-    // Helper function to generate pattern-based numbers
-    generatePatternNumbers(analysis) {
-      const recentDrawings = analysis.drawings?.slice(0, 10) || [];
-      const numbers = [];
-      
-      // Look for patterns in recent drawings
-      if (recentDrawings.length > 0) {
-        // Get numbers that appeared in last 3 drawings
-        const recentNumbers = new Set();
-        recentDrawings.slice(0, 3).forEach(drawing => {
-          drawing.numbers.forEach(num => recentNumbers.add(num));
-        });
-        
-        // Pick 2-3 from recent numbers
-        const recentArray = Array.from(recentNumbers);
-        for (let i = 0; i < Math.min(3, recentArray.length); i++) {
-          if (Math.random() > 0.5) {
-            numbers.push(recentArray[i]);
-          }
-        }
-      }
-      
-      // Fill remaining with hot numbers and randoms
-      const hotNumbers = analysis.numberAnalysis.hotNumbers || [];
-      while (numbers.length < 5) {
-        let candidate;
-        if (numbers.length < 3 && hotNumbers.length > 0) {
-          candidate = hotNumbers[Math.floor(Math.random() * Math.min(10, hotNumbers.length))];
-        } else {
-          candidate = Math.floor(Math.random() * 69) + 1;
-        }
-        
-        if (!numbers.includes(candidate)) {
-          numbers.push(candidate);
-        }
-      }
-      
-      return numbers.sort((a, b) => a - b);
-    },
-
-    // Helper function for constrained random generation
-    generateConstrainedRandom(analysis) {
-      const numbers = [];
-      const avgSum = analysis.patterns.averageSum;
-      const minSum = avgSum - 30;
-      const maxSum = avgSum + 30;
-      
-      let attempts = 0;
-      while (numbers.length < 5 && attempts < 1000) {
-        const candidate = Math.floor(Math.random() * 69) + 1;
-        if (!numbers.includes(candidate)) {
-          const tempNumbers = [...numbers, candidate];
-          const currentSum = tempNumbers.reduce((sum, num) => sum + num, 0);
-          
-          if (tempNumbers.length === 5) {
-            if (currentSum >= minSum && currentSum <= maxSum) {
-              numbers.push(candidate);
-            }
-          } else {
-            numbers.push(candidate);
-          }
-        }
-        attempts++;
-      }
-      
-      // Fallback if constraints too strict
-      while (numbers.length < 5) {
-        const candidate = Math.floor(Math.random() * 69) + 1;
-        if (!numbers.includes(candidate)) {
-          numbers.push(candidate);
-        }
-      }
-      
-      return numbers.sort((a, b) => a - b);
-    },
