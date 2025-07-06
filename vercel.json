@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm ci && chmod +x ./node_modules/.bin/* && npm run build",
-  "installCommand": "npm ci",
+  "installCommand": "npm install && chmod +x ./node_modules/.bin/*",
+  "buildCommand": "npm run build",
   "headers": [
     {
       "source": "/api/(.*)",
