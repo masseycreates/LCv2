@@ -4,11 +4,136 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LCv2 - Claude Opus 4 Lottery System</title>
-    <meta name="description" content="Advanced lottery analysis system powered by Claude Opus 4 AI and mathematical algorithms">
+    <title>LCv2 - Advanced Lottery Intelligence System</title>
+    <meta name="description" content="Advanced modular lottery analysis system powered by Claude AI and mathematical algorithms">
+    <meta name="keywords" content="lottery, analysis, AI, predictions, Powerball">
+    <meta name="author" content="LCv2 Development Team">
+    
+    <!-- Preconnect to external resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#3b82f6">
+    
+    <!-- Open Graph meta tags for social sharing -->
+    <meta property="og:title" content="LCv2 - Advanced Lottery Intelligence System">
+    <meta property="og:description" content="Advanced modular lottery analysis system powered by Claude AI">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/og-image.png">
+    
+    <!-- Loading styles -->
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        overflow: hidden;
+      }
+      
+      .loading-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        z-index: 9999;
+      }
+      
+      .loading-logo {
+        font-size: 4rem;
+        margin-bottom: 2rem;
+        animation: pulse-glow 2s infinite;
+      }
+      
+      .loading-text {
+        font-size: 1.5rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+        text-align: center;
+      }
+      
+      .loading-subtext {
+        font-size: 1rem;
+        opacity: 0.8;
+        text-align: center;
+        max-width: 500px;
+        line-height: 1.6;
+      }
+      
+      .loading-bar {
+        width: 300px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+        margin: 2rem 0;
+        overflow: hidden;
+      }
+      
+      .loading-progress {
+        height: 100%;
+        background: linear-gradient(90deg, #60a5fa, #34d399);
+        border-radius: 2px;
+        animation: loading-animation 2s infinite;
+      }
+      
+      @keyframes pulse-glow {
+        0%, 100% {
+          transform: scale(1);
+          text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+        }
+        50% {
+          transform: scale(1.05);
+          text-shadow: 0 0 30px rgba(255, 255, 255, 1);
+        }
+      }
+      
+      @keyframes loading-animation {
+        0% {
+          width: 0%;
+          transform: translateX(-100%);
+        }
+        50% {
+          width: 100%;
+          transform: translateX(0%);
+        }
+        100% {
+          width: 100%;
+          transform: translateX(100%);
+        }
+      }
+      
+      .version-info {
+        position: absolute;
+        bottom: 2rem;
+        font-size: 0.875rem;
+        opacity: 0.7;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="loading-container">
+        <div class="loading-logo">🎰🤖</div>
+        <div class="loading-text">LCv2 Loading...</div>
+        <div class="loading-subtext">
+          Initializing Advanced Lottery Intelligence System<br>
+          Powered by Claude AI & Mathematical Algorithms
+        </div>
+        <div class="loading-bar">
+          <div class="loading-progress"></div>
+        </div>
+        <div class="version-info">Version 2.0.0 - Modular Architecture</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
