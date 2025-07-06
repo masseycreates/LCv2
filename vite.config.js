@@ -1,4 +1,3 @@
-// vite.config.js - Working configuration for LCv2
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
@@ -25,11 +24,12 @@ export default defineConfig({
   },
 
   build: {
+    outDir: 'dist',
+    sourcemap: false,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Vendor chunks
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
             return 'vendor-react';
           }
@@ -40,7 +40,6 @@ export default defineConfig({
             return 'vendor-utils';
           }
           
-          // App chunks - only create if files exist
           if (id.includes('/contexts/')) {
             return 'app-state';
           }
@@ -54,7 +53,6 @@ export default defineConfig({
       }
     },
     minify: 'esbuild',
-    sourcemap: false,
     target: 'esnext'
   },
 

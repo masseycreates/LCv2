@@ -1,28 +1,30 @@
 {
   "name": "lcv2-modular-lottery-app",
   "version": "2.0.0",
-  "description": "Advanced Lottery Intelligence System with Claude Opus 4",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npx vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext js,jsx",
-    "lint:fix": "eslint src --ext js,jsx --fix"
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
-    "clsx": "^2.1.1",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "zustand": "^5.0.5"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "clsx": "^2.1.0",
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.6.0",
-    "autoprefixer": "^10.4.21",
-    "eslint": "^9.29.0",
-    "postcss": "^8.5.6",
-    "prettier": "^3.6.0",
-    "tailwindcss": "^3.4.17",
-    "vite": "^6.3.5"
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "vite": "^6.0.0",
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.0",
+    "autoprefixer": "^10.4.0"
   }
 }
