@@ -19,29 +19,29 @@ import './styles/globals/index.css';
 const TAB_CONFIG = {
   'quick-pick': {
     id: 'quick-pick',
-    label: '?? AI Hybrid',
-    icon: '??',
+    label: 'AI Hybrid',
+    icon: '🤖✨',
     component: QuickSelection,
     description: 'Claude + Algorithms'
   },
   'manual': {
     id: 'manual',
-    label: '?? Manual',
-    icon: '??',
+    label: 'Manual',
+    icon: '🎯',
     component: NumberSelector,
     description: 'Choose numbers'
   },
   'tax': {
     id: 'tax',
-    label: '?? Tax Calc',
-    icon: '??',
+    label: 'Tax Calc',
+    icon: '🧮',
     component: TaxCalculator,
     description: 'Calculate taxes'
   },
   'analysis': {
     id: 'analysis',
-    label: '?? Analysis',
-    icon: '??',
+    label: 'Analysis',
+    icon: '📊',
     component: DataAnalysis,
     description: 'Data insights'
   }
