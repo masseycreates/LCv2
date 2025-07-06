@@ -1,61 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { useApp } from '@/contexts/AppContext';
 import { useLottery } from '@/contexts/LotteryContext';
 import { claudeService } from '@/services/claudeService';
-import { powerballService } from '@/services/powerballService';
 import Card from '@components/ui/Card';
 import Button from '@components/ui/Button';
 import LoadingSpinner from '@components/ui/LoadingSpinner';
-import SelectionDisplay from './SelectionDisplay';
 import Banner from '@components/ui/Banner';
 
 function QuickSelection() {
-  const { 
-    isClaudeEnabled, 
-    claudeApiKey,
-    setClaudeApiKey,
-    setClaudeConnectionStatus,
-    addNotification
-  } = useApp();
-  
+  // Lottery context
   const {
     historicalStats,
     currentJackpot,
-    quickSelectionSets,
-    setQuickSelections
+    quickSelections,
+    isLoadingHistory,
+    isGeneratingSelections,
+    error,
+    historicalRecordsLimit,
+    fetchHistoricalStats,
+    generateQuickSelections,
+    updateRecordsLimit,
+    clearError
   } = useLottery();
 
+  // Local state
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isGeneratingSelections, setIsGeneratingSelections] = useState(false);
+  const [claudeConnectionStatus, setClaudeConnectionStatus] = useState('disconnected');
+  const [claudeApiKey, setClaudeApiKey] = useState('');
   const [historicalData, setHistoricalData] = useState(null);
   const [loadingData, setLoadingData] = useState(false);
-  const [error, setError] = useState(null);
-  const [selectedModel, setSelectedModel] = useState('claude-3-opus-20240229');
+  const [localError, setLocalError] = useState(null);
+  const [selectedModel, setSelectedModel] = useState('claude-3-sonnet-20240229');
 
-  const availableModels = claudeService.getAvailableModels();
+  const availableModels = [
+    { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet (Recommended)', description: 'Balanced performance and speed' },
+    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Most capable model' },
+    { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', description: 'Fastest response' }
+  ];
 
-  // Load historical data on component mount with 2000 drawings
+  const isClaudeEnabled = claudeConnectionStatus === 'connected' && claudeApiKey;
+
+  // Load historical data on component mount
   useEffect(() => {
     loadHistoricalData();
   }, []);
 
   const loadHistoricalData = async () => {
     setLoadingData(true);
-    setError(null);
+    setLocalError(null);
     
     try {
-      const result = await powerballService.getHistoricalData(2000);
-      setHistoricalData(result);
-      
-      if (addNotification) {
-        addNotification({
-          type: 'success',
-          message: `Loaded ${result.analysis.totalDrawings} historical drawings for analysis`
-        });
-      }
+      const result = await fetchHistoricalStats(historicalRecordsLimit);
+      setHistoricalData(result.data);
+      console.log(`Loaded ${result.data?.analysis?.totalDrawings || 0} historical drawings for analysis`);
     } catch (err) {
-      const errorMessage = err.code === 'NETWORK_ERROR' 
+      const errorMessage = err.code === 'API_CONNECTION_FAILED'
         ? 'Cannot connect to lottery data servers. Please check your internet connection and try again.'
         : err.code === 'API_ERROR'
         ? 'Lottery data service is temporarily unavailable. Please try again in a few minutes.'
@@ -63,7 +62,7 @@ function QuickSelection() {
         ? 'No historical lottery data is available. The analysis requires real drawing data to function.'
         : `Failed to load lottery data: ${err.message}`;
       
-      setError(errorMessage);
+      setLocalError(errorMessage);
     } finally {
       setLoadingData(false);
     }
@@ -73,17 +72,13 @@ function QuickSelection() {
     const trimmedKey = apiKeyInput.trim();
     
     if (!trimmedKey) {
-      if (addNotification) {
-        addNotification({
-          type: 'error',
-          message: 'Please enter your Anthropic API key'
-        });
-      }
+      setLocalError('Please enter your Anthropic API key');
       return;
     }
     
     setIsConnecting(true);
     setClaudeConnectionStatus('connecting');
+    setLocalError(null);
     
     try {
       const result = await claudeService.testConnection(trimmedKey);
@@ -92,13 +87,7 @@ function QuickSelection() {
         setClaudeApiKey(trimmedKey);
         setClaudeConnectionStatus('connected');
         setApiKeyInput('');
-        
-        if (addNotification) {
-          addNotification({
-            type: 'success',
-            message: `Connected to ${result.model} successfully!`
-          });
-        }
+        console.log(`Connected to ${result.model} successfully!`);
       }
     } catch (error) {
       setClaudeConnectionStatus('error');
@@ -113,258 +102,185 @@ function QuickSelection() {
         ? 'Too many connection attempts. Please wait a moment before trying again.'
         : error.code === 'NETWORK_ERROR'
         ? 'Cannot connect to Claude API. Please check your internet connection.'
-        : `Connection failed: ${error.message}`;
+        : `Failed to connect to Claude: ${error.message}`;
       
-      if (addNotification) {
-        addNotification({
-          type: 'error',
-          message: errorMessage
-        });
-      }
+      setLocalError(errorMessage);
     } finally {
       setIsConnecting(false);
     }
   };
 
-  const generateLocalSelections = async () => {
+  const handleGenerateSelections = async () => {
+    clearError();
+    setLocalError(null);
+    
     if (!historicalData) {
-      if (addNotification) {
-        addNotification({
-          type: 'error',
-          message: 'Historical data is required for number generation'
-        });
-      }
+      setLocalError('Historical data is required for selection generation. Please wait for data to load.');
       return;
     }
 
-    setIsGeneratingSelections(true);
-    
     try {
-      const selections = [];
-      const analysis = historicalData.analysis;
-      
-      // Strategy 1: Hot numbers
-      const hotSelection = {
-        id: `local-hot-${Date.now()}`,
-        name: 'Hot Numbers Strategy',
-        numbers: analysis.numberAnalysis.hotNumbers.slice(0, 5).sort((a, b) => a - b),
-        powerball: analysis.powerballAnalysis.hotPowerballs[0],
-        strategy: 'Frequency Analysis',
-        confidence: 75,
-        description: `Based on most frequently drawn numbers from ${analysis.totalDrawings} drawings`,
-        factors: ['High frequency', 'Recent activity'],
-        claudeGenerated: false,
-        isHybrid: false
-      };
-      selections.push(hotSelection);
-
-      // Strategy 2: Balanced approach
-      const balancedNumbers = [];
-      const ranges = [[1, 14], [15, 28], [29, 42], [43, 56], [57, 69]];
-      ranges.forEach(([min, max]) => {
-        const rangeNumbers = analysis.numberAnalysis.hotNumbers.filter(n => n >= min && n <= max);
-        if (rangeNumbers.length > 0) {
-          balancedNumbers.push(rangeNumbers[0]);
-        } else {
-          balancedNumbers.push(Math.floor(Math.random() * (max - min + 1)) + min);
-        }
-      });
-      
-      const balancedSelection = {
-        id: `local-balanced-${Date.now()}`,
-        name: 'Balanced Range Strategy',
-        numbers: balancedNumbers.slice(0, 5).sort((a, b) => a - b),
-        powerball: analysis.powerballAnalysis.hotPowerballs[1] || Math.floor(Math.random() * 26) + 1,
-        strategy: 'Range Distribution',
-        confidence: 72,
-        description: 'Numbers distributed across all ranges for balanced coverage',
-        factors: ['Range balance', 'Statistical distribution'],
-        claudeGenerated: false,
-        isHybrid: false
-      };
-      selections.push(balancedSelection);
-
-      // Add 4 more mathematical selections
-      for (let i = 3; i <= 6; i++) {
-        const numbers = [];
-        while (numbers.length < 5) {
-          const num = Math.floor(Math.random() * 69) + 1;
-          if (!numbers.includes(num)) {
-            numbers.push(num);
-          }
-        }
+      if (isClaudeEnabled) {
+        // Use Claude AI for advanced analysis
+        const claudeResult = await claudeService.generateLotterySelections(
+          claudeApiKey,
+          historicalData,
+          currentJackpot
+        );
         
-        selections.push({
-          id: `local-math-${i}-${Date.now()}`,
-          name: `Mathematical Strategy ${i}`,
-          numbers: numbers.sort((a, b) => a - b),
-          powerball: Math.floor(Math.random() * 26) + 1,
-          strategy: 'Mathematical Analysis',
-          confidence: 70 + Math.floor(Math.random() * 8),
-          description: 'Advanced mathematical algorithm using pattern analysis',
-          factors: ['Pattern analysis', 'Mathematical modeling'],
-          claudeGenerated: false,
-          isHybrid: false
-        });
+        if (claudeResult.success) {
+          await generateQuickSelections(5); // Generate 5 sets
+          console.log('Claude-generated selections created successfully');
+        }
+      } else {
+        // Use local mathematical algorithms
+        await generateQuickSelections(6); // Generate 6 sets for local algorithms
+        console.log('Mathematical algorithm selections generated');
       }
-      
-      setQuickSelections(selections);
-      
-      if (addNotification) {
-        addNotification({
-          type: 'success',
-          message: `Generated ${selections.length} mathematical selections`
-        });
-      }
-      
     } catch (error) {
-      if (addNotification) {
-        addNotification({
-          type: 'error',
-          message: `Failed to generate selections: ${error.message}`
-        });
+      const errorMessage = error.code === 'MISSING_HISTORICAL_DATA'
+        ? 'Historical lottery data is required for analysis. Please try refreshing the data.'
+        : error.code === 'CLAUDE_API_ERROR'
+        ? 'Claude AI service is temporarily unavailable. Using local algorithms instead.'
+        : `Failed to generate selections: ${error.message}`;
+      
+      setLocalError(errorMessage);
+      
+      // Fallback to local generation if Claude fails
+      if (isClaudeEnabled && error.code === 'CLAUDE_API_ERROR') {
+        try {
+          await generateQuickSelections(6);
+          console.log('Fallback to local algorithms successful');
+        } catch (fallbackError) {
+          console.error('Fallback generation also failed:', fallbackError);
+        }
       }
-    } finally {
-      setIsGeneratingSelections(false);
     }
   };
 
-  const generateClaudeSelections = async () => {
-    if (!claudeApiKey || !historicalData) {
-      if (addNotification) {
-        addNotification({
-          type: 'error',
-          message: 'Claude API key and historical data required for AI generation'
-        });
-      }
-      return;
-    }
-
-    setIsGeneratingSelections(true);
-    
-    try {
-      const result = await claudeService.generateLotterySelections(
-        claudeApiKey, 
-        historicalData, 
-        currentJackpot
-      );
-      
-      setQuickSelections(result.selections);
-      
-      if (addNotification) {
-        addNotification({
-          type: 'success',
-          message: `Claude generated ${result.selections.length} AI-powered selections`
-        });
-      }
-      
-    } catch (error) {
-      const errorMessage = error.code === 'MISSING_API_KEY'
-        ? 'Claude API key is required for AI generation'
-        : error.code === 'INSUFFICIENT_CREDITS'
-        ? 'Insufficient Claude API credits. Please add credits to your Anthropic account.'
-        : error.code === 'RATE_LIMITED'
-        ? 'Claude API rate limit reached. Please wait before generating more selections.'
-        : error.code === 'INVALID_RESPONSE'
-        ? 'Claude returned an unexpected response. Please try again.'
-        : `Claude analysis failed: ${error.message}`;
-      
-      setError(errorMessage);
-      if (addNotification) {
-        addNotification({
-          type: 'error',
-          message: errorMessage
-        });
-      }
-    } finally {
-      setIsGeneratingSelections(false);
-    }
+  const handleUpdateDataRange = async (newLimit) => {
+    updateRecordsLimit(newLimit);
+    await loadHistoricalData();
   };
 
-  const handleGenerateSelections = () => {
-    if (isClaudeEnabled && claudeApiKey) {
-      generateClaudeSelections();
-    } else {
-      generateLocalSelections();
-    }
-  };
-
-  if (loadingData) {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <LoadingSpinner.Inline message="Loading real historical lottery data..." />
-        </Card>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <Banner type="error">
-          <div>
-            <strong>Data Error:</strong> {error}
-          </div>
-          <Button 
-            onClick={loadHistoricalData} 
-            variant="ghost" 
-            size="sm" 
-            className="mt-3"
-          >
-            🔄 Retry Loading Data
-          </Button>
-        </Banner>
-      </div>
-    );
-  }
+  const dataRangeOptions = [
+    { value: 50, label: '50 drawings (2 months)', description: 'Recent trends' },
+    { value: 100, label: '100 drawings (4 months)', description: 'Short-term patterns' },
+    { value: 250, label: '250 drawings (1 year)', description: 'Seasonal analysis' },
+    { value: 500, label: '500 drawings (2 years)', description: 'Medium-term trends' },
+    { value: 1000, label: '1000 drawings (4 years)', description: 'Long-term patterns' },
+    { value: 1500, label: '1500 drawings (6 years)', description: 'Extended analysis' },
+    { value: 2000, label: '2000 drawings (8+ years)', description: 'Maximum historical data' }
+  ];
 
   return (
     <div className="space-y-6">
       {/* Historical Data Status */}
-      {historicalData && (
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h4 className="text-sm font-semibold text-gray-900">📊 Historical Data Loaded</h4>
-              <p className="text-xs text-gray-600">
-                {historicalData.analysis.totalDrawings} real drawings analyzed from {historicalData.analysis.dataSource}
-              </p>
-            </div>
-            <Button onClick={loadHistoricalData} variant="ghost" size="sm">
-              🔄 Refresh Data
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* Claude Opus 4 Integration */}
-      <Card.Opus4>
+      <Card>
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="text-2xl">🤖✨</div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Claude Opus 4 Integration</h3>
-              <p className="text-sm text-gray-600">Most intelligent AI model for advanced lottery analysis</p>
-            </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              ?? Historical Data Analysis
+              {loadingData && <LoadingSpinner />}
+            </h3>
+            <p className="text-sm text-gray-600">
+              {historicalStats ? 
+                `${historicalStats.totalDrawings} real drawings analyzed from ${historicalStats.dateRange?.earliest || 'unknown'} to ${historicalStats.dateRange?.latest || 'unknown'}` :
+                'Loading official lottery drawing data for analysis'
+              }
+            </p>
           </div>
           
-          {isClaudeEnabled && (
-            <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold rounded-full">
-              ✨ OPUS 4 ACTIVE
-            </span>
-          )}
+          <Button
+            onClick={loadHistoricalData}
+            variant="secondary"
+            size="sm"
+            disabled={loadingData}
+            className="flex items-center gap-2"
+          >
+            {loadingData ? <LoadingSpinner /> : '??'} Refresh Data
+          </Button>
+        </div>
+
+        {/* Data Range Selector */}
+        <div className="flex items-center gap-4 mb-4">
+          <label className="text-sm font-medium text-gray-700">
+            Analysis Range:
+          </label>
+          <select 
+            value={historicalRecordsLimit}
+            onChange={(e) => handleUpdateDataRange(parseInt(e.target.value))}
+            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={loadingData}
+          >
+            {dataRangeOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Data Statistics */}
+        {historicalStats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-3 bg-blue-50 rounded-lg text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {historicalStats.totalDrawings}
+              </div>
+              <div className="text-xs text-blue-600 font-medium">Total Drawings</div>
+            </div>
+            
+            <div className="p-3 bg-green-50 rounded-lg text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {historicalStats.hotNumbers?.[0]?.number || 'N/A'}
+              </div>
+              <div className="text-xs text-green-600 font-medium">Hottest Number</div>
+            </div>
+            
+            <div className="p-3 bg-purple-50 rounded-lg text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                {historicalStats.hotPowerballs?.[0]?.number || 'N/A'}
+              </div>
+              <div className="text-xs text-purple-600 font-medium">Hot Powerball</div>
+            </div>
+            
+            <div className="p-3 bg-orange-50 rounded-lg text-center">
+              <div className="text-2xl font-bold text-orange-600">
+                {historicalStats.averageJackpot ? 
+                  `$${Math.round(historicalStats.averageJackpot / 1000000)}M` : 
+                  'N/A'
+                }
+              </div>
+              <div className="text-xs text-orange-600 font-medium">Avg Jackpot</div>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Claude AI Integration */}
+      <Card className={isClaudeEnabled ? 'border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50' : ''}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="text-2xl">??</div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Claude Opus 4 Integration
+            </h3>
+            <p className="text-sm text-gray-600">
+              Most intelligent AI model for advanced lottery analysis
+            </p>
+          </div>
         </div>
 
         {!isClaudeEnabled ? (
           <div className="space-y-4">
             <Banner type="warning">
-              ⚠️ Using local mathematical analysis only. Connect your Claude Opus 4 API key for advanced AI analysis.
+              ?? Using local mathematical analysis only. Connect your Claude Opus 4 API key for advanced AI analysis.
             </Banner>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Anthropic API Key
                 </label>
                 <input
@@ -372,8 +288,7 @@ function QuickSelection() {
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
                   placeholder="sk-ant-..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  disabled={isConnecting}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Get your API key from console.anthropic.com
@@ -381,18 +296,17 @@ function QuickSelection() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Claude Model
                 </label>
                 <select
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  disabled={isConnecting}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  {availableModels.map(model => (
+                  {availableModels.map((model) => (
                     <option key={model.id} value={model.id}>
-                      {model.name} {model.recommended && '(Recommended)'}
+                      {model.name}
                     </option>
                   ))}
                 </select>
@@ -403,7 +317,8 @@ function QuickSelection() {
               onClick={handleEnableClaude}
               disabled={isConnecting || !apiKeyInput.trim()}
               loading={isConnecting}
-              variant="opus4"
+              variant="primary"
+              className="w-full md:w-auto"
             >
               {isConnecting ? 'Testing Connection...' : 'Connect to Claude Opus 4'}
             </Button>
@@ -411,7 +326,7 @@ function QuickSelection() {
         ) : (
           <div className="space-y-4">
             <Banner type="opus4">
-              ✅ Claude Opus 4 is connected and ready for advanced lottery analysis
+              ? Claude Opus 4 is connected and ready for advanced lottery analysis
             </Banner>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -422,19 +337,31 @@ function QuickSelection() {
                 <strong>Status:</strong> Ready for analysis
               </div>
               <div>
-                <strong>Data:</strong> {historicalData?.analysis?.totalDrawings || 0} drawings
+                <strong>Data:</strong> {historicalStats?.totalDrawings || 0} drawings
               </div>
             </div>
+            
+            <Button
+              onClick={() => {
+                setClaudeApiKey('');
+                setClaudeConnectionStatus('disconnected');
+              }}
+              variant="ghost"
+              size="sm"
+            >
+              Disconnect
+            </Button>
           </div>
         )}
-      </Card.Opus4>
+      </Card>
 
       {/* Generate Selections */}
       <Card>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              {isClaudeEnabled ? '🤖 Claude Opus 4 Selections' : '🎯 Mathematical Selections'}
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              {isClaudeEnabled ? '?? Claude Opus 4 Selections' : '?? Mathematical Selections'}
+              {isGeneratingSelections && <LoadingSpinner />}
             </h3>
             <p className="text-sm text-gray-600">
               {isClaudeEnabled 
@@ -446,41 +373,66 @@ function QuickSelection() {
           
           <Button
             onClick={handleGenerateSelections}
-            disabled={isGeneratingSelections || !historicalData}
+            disabled={isGeneratingSelections || !historicalStats}
             loading={isGeneratingSelections}
-            variant={isClaudeEnabled ? "opus4" : "primary"}
+            variant={isClaudeEnabled ? "primary" : "secondary"}
+            className="flex items-center gap-2"
           >
             {isGeneratingSelections ? 'Generating...' : 'Generate Selections'}
           </Button>
         </div>
 
-        {quickSelectionSets && quickSelectionSets.length > 0 ? (
+        {/* Generated Selections Display */}
+        {quickSelections && quickSelections.length > 0 ? (
           <div className="space-y-4">
-            {(quickSelectionSets || []).map((selection, index) => (
-              <div key={selection.id || index} className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">{selection.name}</h4>
-                <div className="flex items-center gap-2 mb-2">
-                  {selection.numbers.map(num => (
-                    <span key={num} className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
+            {quickSelections.map((selection, index) => (
+              <div key={selection.id || index} className="p-4 border rounded-lg bg-white">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-900">
+                    {selection.name || `Selection ${index + 1}`}
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    {selection.claudeGenerated && (
+                      <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full font-medium">
+                        ?? Claude AI
+                      </span>
+                    )}
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                      {selection.confidence || 75}% Confidence
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2 mb-3">
+                  {(selection.numbers || []).map(num => (
+                    <span key={num} className="w-10 h-10 flex items-center justify-center bg-blue-100 text-blue-800 rounded-full text-sm font-bold">
                       {num}
                     </span>
                   ))}
-                  <span className="w-8 h-8 flex items-center justify-center bg-red-500 text-white rounded-full text-sm font-bold">
-                    {selection.powerball}
+                  <span className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded-full text-sm font-bold mx-2">
+                    {selection.powerball || 1}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600">{selection.description}</p>
-                <div className="text-xs text-gray-500 mt-1">
-                  Strategy: {selection.strategy} • Confidence: {selection.confidence}%
+                
+                <p className="text-sm text-gray-600 mb-2">
+                  {selection.description || selection.explanation || 'Mathematical analysis based on historical patterns'}
+                </p>
+                
+                <div className="text-xs text-gray-500">
+                  <strong>Strategy:</strong> {selection.strategy || 'Mathematical Analysis'} � 
+                  <strong> Method:</strong> {selection.claudeGenerated ? 'Claude AI Analysis' : 'Local Algorithms'}
+                  {selection.factors && (
+                    <> � <strong>Factors:</strong> {Array.isArray(selection.factors) ? selection.factors.join(', ') : selection.factors}</>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="text-center py-8 text-gray-500">
-            <div className="text-4xl mb-4">🎯</div>
+            <div className="text-4xl mb-4">??</div>
             <p className="text-sm">No selections generated yet.</p>
-            {!historicalData && (
+            {!historicalStats && (
               <p className="text-xs mt-2">
                 Real historical data is required for selection generation.
               </p>
@@ -488,6 +440,13 @@ function QuickSelection() {
           </div>
         )}
       </Card>
+
+      {/* Error Display */}
+      {(error || localError) && (
+        <Banner type="error" dismissible onDismiss={() => { clearError(); setLocalError(null); }}>
+          <strong>Error:</strong> {error?.message || localError}
+        </Banner>
+      )}
 
       {/* Disclaimer */}
       <Banner type="info">

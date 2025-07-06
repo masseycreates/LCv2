@@ -1,111 +1,84 @@
-import React from 'react';
-import { useApp } from '@/contexts/AppContext';
+import React, { useEffect } from 'react';
 import { useLottery } from '@/contexts/LotteryContext';
-import Button from '@components/ui/Button';
-import LoadingSpinner from '@components/ui/LoadingSpinner';
 
 function Header() {
-  const { 
-    isClaudeEnabled, 
-    isUpdating, 
-    dataStatus,
-    lastUpdated 
-  } = useApp();
-  
-  const { 
-    currentJackpot, 
-    nextDrawing, 
-    liveDataAvailable,
-    fetchCurrentData
+  const {
+    currentJackpot,
+    nextDrawing,
+    isLoading,
+    error,
+    dataSource,
+    fetchCurrentData,
+    clearError
   } = useLottery();
 
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchCurrentData();
+  }, [fetchCurrentData]);
+
   const handleRefresh = async () => {
-    try {
-      await fetchCurrentData();
-    } catch (error) {
-      console.error('Refresh failed:', error);
-    }
+    clearError();
+    await fetchCurrentData();
   };
 
   return (
-    <header className="sticky top-0 z-50 mb-4">
-      <div 
-        className={`
-          ${liveDataAvailable 
-            ? 'bg-gradient-to-r from-purple-600 via-blue-600 to-green-500' 
-            : 'bg-gradient-to-r from-gray-600 via-gray-500 to-gray-400'
-          }
-          relative overflow-hidden rounded-xl mx-4 mt-4 shadow-xl
-        `}
-      >
-        {/* Animated shimmer effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
-        
-        <div className="relative flex items-center justify-between p-4 text-white">
-          {/* Left side - Icon and title */}
-          <div className="flex items-center gap-3">
-            <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
-              {isClaudeEnabled ? '???' : liveDataAvailable ? '??' : '??'}
-            </div>
-            
-            <div>
-              <div className="text-sm font-medium opacity-80">
-                {isClaudeEnabled 
-                  ? 'Claude Opus 4 + Advanced Algorithms Hybrid' 
-                  : 'Enhanced Powerball System'
-                }
-              </div>
-              
-              <div className="text-2xl font-bold">
-                {liveDataAvailable && currentJackpot 
-                  ? currentJackpot.formatted 
-                  : 'Visit powerball.com'
-                }
-              </div>
-              
-              <div className="text-xs opacity-70">
-                {liveDataAvailable && currentJackpot 
-                  ? `Cash: ${currentJackpot.cashFormatted} • ` 
-                  : 'For current jackpot • '
-                }
-                {nextDrawing || 'Next drawing TBD'}
-              </div>
-            </div>
+    <div className={`sticky top-0 z-50 mb-6 rounded-xl p-4 shadow-lg ${
+      currentJackpot ? 'bg-gradient-to-r from-purple-600 via-blue-600 to-teal-600' : 'bg-gradient-to-r from-gray-600 to-gray-700'
+    }`}>
+      <div className="flex items-center justify-between text-white">
+        <div className="flex items-center gap-3">
+          <div className="bg-white bg-opacity-20 p-2 rounded-full">
+            {currentJackpot ? '??' : error ? '??' : '??'}
           </div>
-
-          {/* Right side - Refresh button */}
-          <div className="text-right">
-            <Button
-              onClick={handleRefresh}
-              disabled={isUpdating}
-              variant="ghost"
-              size="sm"
-              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-            >
-              {isUpdating ? <LoadingSpinner size="sm" /> : '??'}
-              <span className="ml-2">Refresh</span>
-            </Button>
+          <div>
+            <div className="text-sm font-medium opacity-80">
+              Enhanced Powerball System
+            </div>
+            <div className="text-xl font-bold">
+              {currentJackpot ? currentJackpot.formatted : 'Visit powerball.com'}
+            </div>
+            <div className="text-xs opacity-70">
+              {currentJackpot ? `Cash: ${currentJackpot.cashFormatted} • ` : 'For current jackpot • '}
+              {nextDrawing || 'Next drawing TBD'}
+            </div>
           </div>
         </div>
+        
+        <div className="text-right">
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className={`
+              bg-white bg-opacity-20 text-white border-none px-3 py-2 rounded-lg text-sm
+              transition-all duration-200 flex items-center gap-2
+              ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-opacity-30 cursor-pointer'}
+            `}
+          >
+            {isLoading ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              '??'
+            )}
+            Refresh
+          </button>
+          
+          {dataSource && (
+            <div className="text-xs opacity-70 mt-1">
+              {error ? 'Data unavailable' : `Source: ${dataSource}`}
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Status banner */}
-      {dataStatus && (
-        <div className="mx-4 mt-2">
-          <div className={`
-            p-2 rounded-lg text-sm font-medium
-            ${dataStatus.includes('?') 
-              ? 'bg-green-50 text-green-700 border-2 border-green-200' 
-              : dataStatus.includes('?') 
-                ? 'bg-red-50 text-red-700 border-2 border-red-200'
-                : 'bg-amber-50 text-amber-700 border-2 border-amber-200'
-            }
-          `}>
-            {dataStatus}
+      
+      {error && (
+        <div className="mt-3 p-2 rounded-lg bg-red-500 bg-opacity-20 border border-red-300 border-opacity-30">
+          <div className="text-xs text-red-100">
+            <strong>Data Error:</strong> {error.message || error}
           </div>
         </div>
       )}
-    </header>
+    </div>
   );
 }
 
