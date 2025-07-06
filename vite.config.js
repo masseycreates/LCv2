@@ -2,7 +2,17 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // Enable JSX in .js files
+      include: "**/*.{jsx,js}",
+    })
+  ],
+  esbuild: {
+    // Enable JSX in .js files
+    loader: 'jsx',
+    include: /src\/.*\.[jt]sx?$/,
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
