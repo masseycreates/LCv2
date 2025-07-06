@@ -1,4 +1,4 @@
-// src/services/powerballService.js - CORS Fixed Version
+// src/services/powerballService.js - Complete Build Fix
 
 /**
  * Powerball Data Service - CORS Issues Fixed
@@ -14,10 +14,10 @@ class PowerballDataError extends Error {
   }
 }
 
-export class PowerballService {
+class PowerballService {
   constructor() {
     // Use your own API endpoints instead of external APIs
-    this.apiBase = window.location.origin; // This will be https://lcv2.vercel.app in production
+    this.apiBase = typeof window !== 'undefined' ? window.location.origin : '';
     this.currentJackpotEndpoint = `${this.apiBase}/api/powerball`;
     this.historicalDataEndpoint = `${this.apiBase}/api/powerball-history`;
     this.testEndpoint = `${this.apiBase}/api/test`;
@@ -82,7 +82,6 @@ export class PowerballService {
 
       // Set next drawing info if available
       if (data.nextDrawing) {
-        // You can dispatch this to your context if needed
         console.log('Next drawing:', data.nextDrawing);
       }
 
@@ -98,7 +97,6 @@ export class PowerballService {
     } catch (error) {
       console.error('Jackpot fetch error:', error);
       
-      // Don't throw CORS errors anymore since we're using internal API
       throw new PowerballDataError(
         error.message || 'Failed to fetch current jackpot data',
         'API_ERROR',
@@ -274,7 +272,6 @@ export class PowerballService {
     }
   }
 
-
   /**
    * Generate statistical analysis of historical data
    */
@@ -345,3 +342,12 @@ export class PowerballService {
     return Math.round(average);
   }
 }
+
+// Create and export a singleton instance
+const powerballService = new PowerballService();
+
+// Export both the instance and the class
+export { powerballService, PowerballService };
+
+// Default export for backward compatibility
+export default powerballService;
