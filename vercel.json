@@ -1,19 +1,6 @@
 {
-  "version": 2,
   "buildCommand": "npm ci && chmod +x ./node_modules/.bin/* && npm run build",
   "installCommand": "npm ci",
-  "framework": "vite",
-  "functions": {
-    "api/powerball.js": {
-      "maxDuration": 30
-    },
-    "api/powerball-history.js": {
-      "maxDuration": 30
-    },
-    "api/test.js": {
-      "maxDuration": 10
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
