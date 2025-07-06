@@ -1,398 +1,629 @@
-// LCv2 Number Selector Component
-import React, { useState } from 'react';
+// LCv2 Number Selector Component - Manual Number Selection
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { LOTTERY_RULES, SUCCESS_MESSAGES } from '../utils/constants.js';
-import { isValidMainNumber, isValidPowerball, generateQuickPick, formatNumbers } from '../utils/helpers.js';
+import { 
+  isValidMainNumber, 
+  isValidPowerball, 
+  generateQuickPick, 
+  formatNumbers,
+  saveToStorage,
+  loadFromStorage 
+} from '../utils/helpers.js';
 
-export default function NumberSelector() {
+export default function NumberSelector({ historicalStats, dataStatus, setDataStatus }) {
+  
+  // ===========================================================================
+  // STATE MANAGEMENT
+  // ===========================================================================
+  
+  // Current selection state
   const [selectedNumbers, setSelectedNumbers] = useState([]);
   const [powerball, setPowerball] = useState('');
+  
+  // Saved selections
   const [savedSelections, setSavedSelections] = useState([]);
+  
+  // UI state
+  const [selectionMode, setSelectionMode] = useState('manual'); // 'manual', 'quick-pick', 'pattern'
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [filterMode, setFilterMode] = useState('all'); // 'all', 'hot', 'cold', 'overdue'
 
-  // Toggle number selection
-  const toggleNumber = (num) => {
-    if (selectedNumbers.includes(num)) {
-      setSelectedNumbers(selectedNumbers.filter(n => n !== num));
-    } else if (selectedNumbers.length < LOTTERY_RULES.mainNumbers.count) {
-      setSelectedNumbers([...selectedNumbers, num].sort((a, b) => a - b));
+  // ===========================================================================
+  // EFFECTS
+  // ===========================================================================
+  
+  // Load saved selections on mount
+  useEffect(() => {
+    const saved = loadFromStorage('lcv2_saved_selections', []);
+    setSavedSelections(saved);
+  }, []);
+
+  // Save selections when they change
+  useEffect(() => {
+    saveToStorage('lcv2_saved_selections', savedSelections);
+  }, [savedSelections]);
+
+  // ===========================================================================
+  // COMPUTED VALUES
+  // ===========================================================================
+  
+  const numberStatistics = useMemo(() => {
+    if (!historicalStats || !historicalStats.drawings) return {};
+    
+    const frequency = {};
+    const lastDrawn = {};
+    const drawings = historicalStats.drawings;
+    
+    // Initialize counters
+    for (let i = 1; i <= 69; i++) {
+      frequency[i] = 0;
+      lastDrawn[i] = drawings.length; // Start with max gap
     }
-  };
+    
+    // Count frequencies and track last drawn
+    drawings.forEach((drawing, index) => {
+      if (drawing.numbers) {
+        drawing.numbers.forEach(num => {
+          if (num >= 1 && num <= 69) {
+            frequency[num]++;
+            lastDrawn[num] = Math.min(lastDrawn[num], index);
+          }
+        });
+      }
+    });
+    
+    // Calculate statistics
+    const sortedByFreq = Object.entries(frequency)
+      .sort(([,a], [,b]) => b - a)
+      .map(([num, freq]) => ({ number: parseInt(num), frequency: freq }));
+    
+    const hot = sortedByFreq.slice(0, 15);
+    const cold = sortedByFreq.slice(-15);
+    const overdue = Object.entries(lastDrawn)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 15)
+      .map(([num, gap]) => ({ number: parseInt(num), gap }));
+    
+    return { frequency, lastDrawn, hot, cold, overdue, total: drawings.length };
+  }, [historicalStats]);
 
-  // Set powerball number
-  const selectPowerball = (num) => {
+  const filteredNumbers = useMemo(() => {
+    const allNumbers = Array.from({ length: 69 }, (_, i) => i + 1);
+    
+    if (filterMode === 'all') return allNumbers;
+    
+    if (!numberStatistics.hot) return allNumbers;
+    
+    switch (filterMode) {
+      case 'hot':
+        return numberStatistics.hot.map(item => item.number);
+      case 'cold':
+        return numberStatistics.cold.map(item => item.number);
+      case 'overdue':
+        return numberStatistics.overdue.map(item => item.number);
+      default:
+        return allNumbers;
+    }
+  }, [filterMode, numberStatistics]);
+
+  const isSelectionComplete = selectedNumbers.length === 5 && powerball;
+  
+  const selectionSummary = useMemo(() => {
+    if (selectedNumbers.length === 0) return null;
+    
+    const sum = selectedNumbers.reduce((acc, num) => acc + num, 0);
+    const evenCount = selectedNumbers.filter(num => num % 2 === 0).length;
+    const lowCount = selectedNumbers.filter(num => num <= 35).length;
+    const highCount = selectedNumbers.filter(num => num > 35).length;
+    
+    return {
+      sum,
+      evenCount,
+      oddCount: selectedNumbers.length - evenCount,
+      lowCount,
+      highCount,
+      range: selectedNumbers.length > 0 ? Math.max(...selectedNumbers) - Math.min(...selectedNumbers) : 0
+    };
+  }, [selectedNumbers]);
+
+  // ===========================================================================
+  // EVENT HANDLERS
+  // ===========================================================================
+  
+  const toggleNumber = useCallback((num) => {
+    if (selectedNumbers.includes(num)) {
+      setSelectedNumbers(prev => prev.filter(n => n !== num));
+    } else if (selectedNumbers.length < LOTTERY_RULES.mainNumbers.count) {
+      setSelectedNumbers(prev => [...prev, num].sort((a, b) => a - b));
+    } else {
+      setDataStatus('?? You can only select 5 main numbers');
+      setTimeout(() => setDataStatus(''), 3000);
+    }
+  }, [selectedNumbers, setDataStatus]);
+
+  const selectPowerball = useCallback((num) => {
     setPowerball(num);
-  };
+  }, []);
 
-  // Clear all selections
-  const clearSelection = () => {
+  const clearSelection = useCallback(() => {
     setSelectedNumbers([]);
     setPowerball('');
-  };
+    setDataStatus('??? Selection cleared');
+    setTimeout(() => setDataStatus(''), 2000);
+  }, [setDataStatus]);
 
-  // Generate quick pick
-  const quickPick = () => {
+  const quickPick = useCallback(() => {
     const pick = generateQuickPick();
     setSelectedNumbers(pick.numbers);
     setPowerball(pick.powerball);
-  };
+    setDataStatus('?? Quick pick generated');
+    setTimeout(() => setDataStatus(''), 2000);
+  }, [setDataStatus]);
 
-  // Save current selection
-  const saveSelection = () => {
-    if (selectedNumbers.length === 5 && powerball) {
-      const newSelection = {
-        id: Date.now(),
-        numbers: [...selectedNumbers],
-        powerball: powerball,
-        timestamp: new Date().toLocaleString(),
-        formatted: formatNumbers(selectedNumbers, powerball)
-      };
-      
-      setSavedSelections([newSelection, ...savedSelections.slice(0, 9)]); // Keep max 10
-      alert('Selection saved!');
-    } else {
+  const saveSelection = useCallback(() => {
+    if (!isSelectionComplete) {
       alert('Please select 5 numbers and a Powerball number first.');
+      return;
     }
-  };
+    
+    const newSelection = {
+      id: Date.now(),
+      numbers: [...selectedNumbers],
+      powerball: powerball,
+      timestamp: new Date().toLocaleString(),
+      formatted: formatNumbers(selectedNumbers, powerball),
+      name: `Selection ${savedSelections.length + 1}`
+    };
+    
+    setSavedSelections(prev => [newSelection, ...prev.slice(0, 19)]); // Keep max 20
+    setDataStatus('?? Selection saved successfully');
+    setTimeout(() => setDataStatus(''), 3000);
+  }, [isSelectionComplete, selectedNumbers, powerball, savedSelections.length, setDataStatus]);
 
-  // Copy selection to clipboard
-  const copySelection = (numbers, pb) => {
-    const ticket = formatNumbers(numbers || selectedNumbers, pb || powerball);
-    navigator.clipboard.writeText(ticket);
-    alert(SUCCESS_MESSAGES.selectionCopied);
-  };
-
-  // Load saved selection
-  const loadSelection = (selection) => {
+  const loadSelection = useCallback((selection) => {
     setSelectedNumbers(selection.numbers);
     setPowerball(selection.powerball);
-  };
+    setDataStatus(`?? Loaded: ${selection.name}`);
+    setTimeout(() => setDataStatus(''), 3000);
+  }, [setDataStatus]);
 
-  // Delete saved selection
-  const deleteSelection = (id) => {
-    setSavedSelections(savedSelections.filter(sel => sel.id !== id));
-  };
+  const deleteSelection = useCallback((id) => {
+    setSavedSelections(prev => prev.filter(sel => sel.id !== id));
+    setDataStatus('??? Selection deleted');
+    setTimeout(() => setDataStatus(''), 2000);
+  }, [setDataStatus]);
 
-  // Check if current selection is complete
-  const isSelectionComplete = selectedNumbers.length === 5 && powerball;
+  const copySelection = useCallback((numbers = selectedNumbers, pb = powerball) => {
+    if (numbers.length === 5 && pb) {
+      const formatted = formatNumbers(numbers, pb);
+      navigator.clipboard.writeText(formatted);
+      setDataStatus(`?? Copied: ${formatted}`);
+      setTimeout(() => setDataStatus(''), 3000);
+    } else {
+      alert('Please complete your selection first.');
+    }
+  }, [selectedNumbers, powerball, setDataStatus]);
 
-  return (
-    <div className="space-y-6">
+  const generatePattern = useCallback((patternType) => {
+    let numbers = [];
+    
+    switch (patternType) {
+      case 'diagonal':
+        numbers = [7, 14, 28, 42, 56];
+        break;
+      case 'corners':
+        numbers = [1, 69, 35, 36, 37];
+        break;
+      case 'cross':
+        numbers = [35, 21, 49, 28, 42];
+        break;
+      case 'lucky':
+        numbers = [7, 11, 21, 33, 47];
+        break;
+      default:
+        numbers = generateQuickPick().numbers;
+    }
+    
+    setSelectedNumbers(numbers);
+    setPowerball(Math.floor(Math.random() * 26) + 1);
+    setDataStatus(`?? ${patternType} pattern applied`);
+    setTimeout(() => setDataStatus(''), 3000);
+  }, [setDataStatus]);
+
+  // ===========================================================================
+  // RENDER HELPERS
+  // ===========================================================================
+  
+  const renderCurrentSelection = () => (
+    <div className="card mb-6">
+      <div className="card-header">
+        <h3 className="card-title">?? Your Current Selection</h3>
+        <p className="card-subtitle">
+          Select {5 - selectedNumbers.length} more numbers and {powerball ? '0' : '1'} Powerball
+        </p>
+      </div>
       
-      {/* Main Selection Card */}
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">🎯 Manual Number Selection</h3>
-        
-        {/* Current Selection Display */}
-        <div className="mb-6">
-          <h4 className="text-sm font-medium mb-2 text-gray-700">Your Selection:</h4>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex gap-2">
-              {selectedNumbers.length > 0 ? selectedNumbers.map(num => 
-                <span key={num} className="number-display">
-                  {num}
-                </span>
-              ) : (
-                <span className="text-gray-400 text-sm">Select 5 numbers (1-69)</span>
-              )}
-            </div>
-            <div>
-              {powerball ? (
-                <span className="powerball-display">PB: {powerball}</span>
-              ) : (
-                <span className="text-gray-400 text-sm">Select Powerball (1-26)</span>
-              )}
-            </div>
-          </div>
-          
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={quickPick}
-              className="btn btn-primary"
-            >
-              🎲 Quick Pick
-            </button>
-            <button
-              onClick={clearSelection}
-              className="btn btn-secondary"
-            >
-              🗑️ Clear
-            </button>
-            {isSelectionComplete && (
-              <>
-                <button
-                  onClick={() => copySelection()}
-                  className="btn btn-secondary"
-                >
-                  📋 Copy
-                </button>
-                <button
-                  onClick={saveSelection}
-                  className="btn btn-purple"
-                >
-                  💾 Save
-                </button>
-              </>
-            )}
-          </div>
-          
-          {/* Selection Status */}
-          <div className="mt-3 text-xs text-gray-600">
-            {selectedNumbers.length > 0 && (
-              <p>
-                {selectedNumbers.length}/5 numbers selected
-                {powerball && ', Powerball selected'}
-                {isSelectionComplete && ' ✅ Complete!'}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Main Numbers Grid */}
-        <div className="mb-6">
-          <h4 className="text-sm font-medium mb-2 text-gray-700">
-            Main Numbers (1-69): {selectedNumbers.length}/5
-          </h4>
-          <div className="grid grid-cols-10 gap-2">
-            {Array.from({ length: 69 }, (_, i) => i + 1).map(num => {
-              const isSelected = selectedNumbers.includes(num);
-              const isDisabled = selectedNumbers.length >= 5 && !isSelected;
-              
-              return (
-                <button
-                  key={num}
-                  onClick={() => toggleNumber(num)}
-                  disabled={isDisabled}
-                  className={`w-10 h-10 text-sm border rounded transition-all ${
-                    isSelected 
-                      ? 'bg-blue-500 text-white border-blue-500 shadow-md' 
-                      : isDisabled
-                        ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                        : 'bg-white border-gray-300 hover:bg-blue-50 hover:border-blue-300 text-gray-900 cursor-pointer'
-                  }`}
-                >
-                  {num}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Powerball Grid */}
-        <div>
-          <h4 className="text-sm font-medium mb-2 text-gray-700">
-            Powerball (1-26): {powerball ? '1/1' : '0/1'}
-          </h4>
-          <div className="grid grid-cols-13 gap-2">
-            {Array.from({ length: 26 }, (_, i) => i + 1).map(num => {
-              const isSelected = powerball === num;
-              
-              return (
-                <button
-                  key={num}
-                  onClick={() => selectPowerball(num)}
-                  className={`w-10 h-10 text-sm border rounded transition-all ${
-                    isSelected 
-                      ? 'bg-red-500 text-white border-red-500 shadow-md' 
-                      : 'bg-white border-gray-300 hover:bg-red-50 hover:border-red-300 text-gray-900 cursor-pointer'
-                  }`}
-                >
-                  {num}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Selection Helpers */}
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">🎯 Quick Selection Helpers</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          {/* Birthdate Helper */}
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-sm mb-2">📅 Birthday Numbers</h4>
-            <p className="text-xs text-gray-600 mb-2">Use special dates (limited to 1-31)</p>
-            <button
-              onClick={() => {
-                const today = new Date();
-                const numbers = [
-                  today.getDate(),
-                  today.getMonth() + 1,
-                  Math.min(today.getFullYear() % 100, 31),
-                  Math.min(Math.floor(Math.random() * 31) + 1, 69),
-                  Math.min(Math.floor(Math.random() * 31) + 1, 69)
-                ].slice(0, 5);
-                
-                // Ensure no duplicates and fill to 5
-                const uniqueNumbers = [...new Set(numbers)];
-                while (uniqueNumbers.length < 5) {
-                  const num = Math.floor(Math.random() * 69) + 1;
-                  if (!uniqueNumbers.includes(num)) {
-                    uniqueNumbers.push(num);
-                  }
-                }
-                
-                setSelectedNumbers(uniqueNumbers.sort((a, b) => a - b));
-                setPowerball(Math.floor(Math.random() * 26) + 1);
-              }}
-              className="btn btn-secondary btn-sm w-full"
-            >
-              Use Today's Date
-            </button>
-          </div>
-          
-          {/* Lucky 7s */}
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-sm mb-2">🍀 Lucky 7s Pattern</h4>
-            <p className="text-xs text-gray-600 mb-2">Numbers with 7 or multiples of 7</p>
-            <button
-              onClick={() => {
-                const luckyNumbers = [7, 14, 17, 21, 27, 35, 42, 49, 56, 63];
-                const selected = [];
-                
-                while (selected.length < 5) {
-                  const randomLucky = luckyNumbers[Math.floor(Math.random() * luckyNumbers.length)];
-                  if (!selected.includes(randomLucky)) {
-                    selected.push(randomLucky);
-                  }
-                }
-                
-                setSelectedNumbers(selected.sort((a, b) => a - b));
-                setPowerball(7);
-              }}
-              className="btn btn-secondary btn-sm w-full"
-            >
-              Lucky 7s
-            </button>
-          </div>
-          
-          {/* High/Low Balance */}
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-sm mb-2">⚖️ Balanced Pick</h4>
-            <p className="text-xs text-gray-600 mb-2">Mix of high (36-69) and low (1-35) numbers</p>
-            <button
-              onClick={() => {
-                const lowNumbers = [];
-                const highNumbers = [];
-                
-                // Select 2-3 low numbers
-                while (lowNumbers.length < 3) {
-                  const num = Math.floor(Math.random() * 35) + 1;
-                  if (!lowNumbers.includes(num)) lowNumbers.push(num);
-                }
-                
-                // Select 2-3 high numbers
-                while (highNumbers.length < 2) {
-                  const num = Math.floor(Math.random() * 34) + 36;
-                  if (!highNumbers.includes(num)) highNumbers.push(num);
-                }
-                
-                const balanced = [...lowNumbers, ...highNumbers].sort((a, b) => a - b);
-                setSelectedNumbers(balanced);
-                setPowerball(Math.floor(Math.random() * 26) + 1);
-              }}
-              className="btn btn-secondary btn-sm w-full"
-            >
-              Balanced Mix
-            </button>
-          </div>
-          
-          {/* Even/Odd Mix */}
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-sm mb-2">🔢 Even/Odd Mix</h4>
-            <p className="text-xs text-gray-600 mb-2">Balanced even and odd numbers</p>
-            <button
-              onClick={() => {
-                const evenNumbers = [];
-                const oddNumbers = [];
-                
-                // Select 2-3 even numbers
-                while (evenNumbers.length < 3) {
-                  const num = (Math.floor(Math.random() * 34) + 1) * 2;
-                  if (num <= 69 && !evenNumbers.includes(num)) evenNumbers.push(num);
-                }
-                
-                // Select 2-3 odd numbers
-                while (oddNumbers.length < 2) {
-                  const num = (Math.floor(Math.random() * 35) * 2) + 1;
-                  if (num <= 69 && !oddNumbers.includes(num)) oddNumbers.push(num);
-                }
-                
-                const mixed = [...evenNumbers, ...oddNumbers].sort((a, b) => a - b);
-                setSelectedNumbers(mixed);
-                setPowerball(Math.floor(Math.random() * 26) + 1);
-              }}
-              className="btn btn-secondary btn-sm w-full"
-            >
-              Even/Odd Mix
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Saved Selections */}
-      {savedSelections.length > 0 && (
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900">💾 Saved Selections</h3>
-          
-          <div className="space-y-2">
-            {savedSelections.map((selection) => (
+      <div className="text-center mb-4">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          {/* Main Numbers */}
+          <div className="flex gap-2">
+            {Array.from({ length: 5 }, (_, i) => (
               <div 
-                key={selection.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                key={i} 
+                className={`number-ball ${
+                  selectedNumbers[i] ? 'number-ball-selected' : 'border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400'
+                }`}
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    {selection.numbers.map(num => (
-                      <span key={num} className="number-display text-xs">
-                        {num}
-                      </span>
-                    ))}
-                    <span className="powerball-display text-xs">
-                      PB: {selection.powerball}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Saved: {selection.timestamp}
-                  </p>
-                </div>
-                
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => loadSelection(selection)}
-                    className="btn btn-secondary btn-sm"
-                    title="Load this selection"
-                  >
-                    📥
-                  </button>
-                  <button
-                    onClick={() => copySelection(selection.numbers, selection.powerball)}
-                    className="btn btn-secondary btn-sm"
-                    title="Copy to clipboard"
-                  >
-                    📋
-                  </button>
-                  <button
-                    onClick={() => deleteSelection(selection.id)}
-                    className="btn btn-secondary btn-sm"
-                    title="Delete this selection"
-                  >
-                    🗑️
-                  </button>
-                </div>
+                {selectedNumbers[i] || '?'}
               </div>
             ))}
           </div>
           
-          {savedSelections.length >= 10 && (
-            <p className="text-xs text-gray-500 mt-2">
-              ℹ️ Maximum 10 selections saved. Oldest will be removed when adding new ones.
-            </p>
-          )}
+          {/* Separator */}
+          <div className="text-2xl text-gray-400 font-bold">|</div>
+          
+          {/* Powerball */}
+          <div className={`number-ball ${
+            powerball ? 'number-ball-powerball' : 'border-2 border-dashed border-red-300 bg-red-50 text-red-400'
+          }`}>
+            {powerball || '?'}
+          </div>
+        </div>
+        
+        {isSelectionComplete && (
+          <div className="text-sm text-green-600 font-medium">
+            ? Selection Complete: {formatNumbers(selectedNumbers, powerball)}
+          </div>
+        )}
+      </div>
+      
+      {/* Selection Summary */}
+      {selectionSummary && (
+        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">?? Selection Analysis</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div>
+              <span className="text-gray-500">Sum:</span>
+              <span className="ml-1 font-medium">{selectionSummary.sum}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Even/Odd:</span>
+              <span className="ml-1 font-medium">{selectionSummary.evenCount}/{selectionSummary.oddCount}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Low/High:</span>
+              <span className="ml-1 font-medium">{selectionSummary.lowCount}/{selectionSummary.highCount}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Range:</span>
+              <span className="ml-1 font-medium">{selectionSummary.range}</span>
+            </div>
+          </div>
         </div>
       )}
+      
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-2">
+        <button onClick={quickPick} className="btn btn-primary">
+          ?? Quick Pick
+        </button>
+        <button 
+          onClick={clearSelection} 
+          className="btn btn-secondary"
+          disabled={selectedNumbers.length === 0 && !powerball}
+        >
+          ??? Clear
+        </button>
+        <button 
+          onClick={saveSelection} 
+          className="btn btn-success"
+          disabled={!isSelectionComplete}
+        >
+          ?? Save
+        </button>
+        <button 
+          onClick={() => copySelection()} 
+          className="btn btn-outline"
+          disabled={!isSelectionComplete}
+        >
+          ?? Copy
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderSelectionModes = () => (
+    <div className="card mb-6">
+      <div className="card-header">
+        <h3 className="card-title">?? Selection Tools</h3>
+        <p className="card-subtitle">Choose how you want to select your numbers</p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Filter Mode */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            ?? Number Filter
+          </label>
+          <select
+            value={filterMode}
+            onChange={(e) => setFilterMode(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">All Numbers</option>
+            <option value="hot">Hot Numbers (Most Frequent)</option>
+            <option value="cold">Cold Numbers (Least Frequent)</option>
+            <option value="overdue">Overdue Numbers</option>
+          </select>
+        </div>
+        
+        {/* Quick Patterns */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            ?? Quick Patterns
+          </label>
+          <select
+            onChange={(e) => e.target.value && generatePattern(e.target.value)}
+            value=""
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select Pattern...</option>
+            <option value="diagonal">Diagonal Pattern</option>
+            <option value="corners">Corner Numbers</option>
+            <option value="cross">Cross Pattern</option>
+            <option value="lucky">Lucky Numbers</option>
+          </select>
+        </div>
+        
+        {/* Statistics Toggle */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            ?? Statistics
+          </label>
+          <button
+            onClick={() => setShowStatistics(!showStatistics)}
+            className={`w-full btn ${showStatistics ? 'btn-primary' : 'btn-outline'}`}
+          >
+            {showStatistics ? 'Hide Stats' : 'Show Stats'}
+          </button>
+        </div>
+        
+        {/* Bulk Actions */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            ? Bulk Actions
+          </label>
+          <button
+            onClick={() => {
+              for (let i = 0; i < 5; i++) {
+                setTimeout(() => quickPick(), i * 100);
+              }
+            }}
+            className="w-full btn btn-secondary"
+          >
+            Generate 5 Sets
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderNumberGrid = () => (
+    <div className="card mb-6">
+      <div className="card-header">
+        <h3 className="card-title">
+          ?? Main Numbers (1-69) 
+          {filterMode !== 'all' && (
+            <span className="text-sm font-normal text-gray-600">
+              - Showing {filterMode} numbers
+            </span>
+          )}
+        </h3>
+        <p className="card-subtitle">
+          Select 5 numbers � {selectedNumbers.length}/5 selected
+        </p>
+      </div>
+      
+      <div className="number-grid number-grid-main">
+        {Array.from({ length: 69 }, (_, i) => i + 1).map(num => {
+          const isSelected = selectedNumbers.includes(num);
+          const isDisabled = selectedNumbers.length >= 5 && !isSelected;
+          const isFiltered = !filteredNumbers.includes(num);
+          const stats = numberStatistics.frequency && numberStatistics.frequency[num];
+          
+          return (
+            <button
+              key={num}
+              onClick={() => !isDisabled && !isFiltered && toggleNumber(num)}
+              disabled={isDisabled || isFiltered}
+              className={`number-ball relative ${
+                isSelected ? 'number-ball-selected' : 
+                isDisabled || isFiltered ? 'number-ball-disabled' : 'number-ball-main'
+              }`}
+              title={
+                stats ? `Frequency: ${stats} (${((stats / numberStatistics.total) * 100).toFixed(1)}%)` : 
+                `Number ${num}`
+              }
+            >
+              {num}
+              {showStatistics && stats && (
+                <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {Math.round((stats / numberStatistics.total) * 100)}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderPowerballGrid = () => (
+    <div className="card mb-6">
+      <div className="card-header">
+        <h3 className="card-title">? Powerball (1-26)</h3>
+        <p className="card-subtitle">
+          Select 1 Powerball number {powerball && `� Selected: ${powerball}`}
+        </p>
+      </div>
+      
+      <div className="number-grid number-grid-powerball">
+        {Array.from({ length: 26 }, (_, i) => i + 1).map(num => (
+          <button
+            key={num}
+            onClick={() => selectPowerball(num)}
+            className={`number-ball ${
+              powerball === num ? 'number-ball-powerball border-red-500 ring-2 ring-red-200' : 
+              'border-2 border-red-300 text-red-700 hover:bg-red-50'
+            }`}
+          >
+            {num}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderSavedSelections = () => (
+    <div className="card">
+      <div className="card-header">
+        <h3 className="card-title">?? Saved Selections ({savedSelections.length}/20)</h3>
+        <p className="card-subtitle">Your saved number combinations</p>
+      </div>
+      
+      {savedSelections.length > 0 ? (
+        <div className="space-y-3">
+          {savedSelections.map(selection => (
+            <div 
+              key={selection.id}
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex-1">
+                <div className="font-medium text-sm text-gray-900 mb-1">
+                  {selection.name}
+                </div>
+                <div className="text-sm text-gray-600 mb-1">
+                  {selection.formatted}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Saved: {selection.timestamp}
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => loadSelection(selection)}
+                  className="btn btn-sm btn-primary"
+                  title="Load this selection"
+                >
+                  ?? Load
+                </button>
+                <button
+                  onClick={() => copySelection(selection.numbers, selection.powerball)}
+                  className="btn btn-sm btn-outline"
+                  title="Copy to clipboard"
+                >
+                  ??
+                </button>
+                <button
+                  onClick={() => deleteSelection(selection.id)}
+                  className="btn btn-sm btn-secondary text-red-600"
+                  title="Delete this selection"
+                >
+                  ???
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 text-gray-500">
+          <div className="text-4xl mb-2">??</div>
+          <p>No saved selections yet</p>
+          <p className="text-sm">Complete a selection and click "Save" to store it here</p>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderStatistics = () => {
+    if (!showStatistics || !numberStatistics.hot) return null;
+    
+    return (
+      <div className="card mb-6">
+        <div className="card-header">
+          <h3 className="card-title">?? Number Statistics</h3>
+          <p className="card-subtitle">Based on {numberStatistics.total} historical drawings</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Hot Numbers */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">?? Hot Numbers</h4>
+            <div className="space-y-1">
+              {numberStatistics.hot.slice(0, 10).map(item => (
+                <div key={item.number} className="flex justify-between text-sm">
+                  <span>{item.number}</span>
+                  <span className="text-gray-500">{item.frequency}x</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Cold Numbers */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">?? Cold Numbers</h4>
+            <div className="space-y-1">
+              {numberStatistics.cold.slice(0, 10).map(item => (
+                <div key={item.number} className="flex justify-between text-sm">
+                  <span>{item.number}</span>
+                  <span className="text-gray-500">{item.frequency}x</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Overdue Numbers */}
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">? Overdue Numbers</h4>
+            <div className="space-y-1">
+              {numberStatistics.overdue.slice(0, 10).map(item => (
+                <div key={item.number} className="flex justify-between text-sm">
+                  <span>{item.number}</span>
+                  <span className="text-gray-500">{item.gap} draws ago</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ===========================================================================
+  // MAIN RENDER
+  // ===========================================================================
+  
+  return (
+    <div className="space-y-6">
+      
+      {/* Current Selection */}
+      {renderCurrentSelection()}
+      
+      {/* Selection Tools */}
+      {renderSelectionModes()}
+      
+      {/* Statistics */}
+      {renderStatistics()}
+      
+      {/* Number Grids */}
+      {renderNumberGrid()}
+      {renderPowerballGrid()}
+      
+      {/* Saved Selections */}
+      {renderSavedSelections()}
     </div>
   );
 }

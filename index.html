@@ -12,32 +12,67 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Meta Tags -->
-    <meta name="description" content="Advanced Lottery Intelligence System with Claude Opus 4 AI and 6 mathematical algorithms">
+    <meta name="description" content="Advanced Lottery Intelligence System with Claude Sonnet 4 AI and 6 mathematical algorithms">
     <meta name="keywords" content="lottery, powerball, claude, ai, prediction, tax calculator">
     <meta name="author" content="LCv2 System">
     
     <!-- Preload critical resources -->
     <link rel="preconnect" href="https://api.anthropic.com">
     <link rel="preconnect" href="https://data.ny.gov">
+    
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'claude-purple': '#8b5cf6',
+                        'lottery-blue': '#3b82f6',
+                        'success-green': '#10b981',
+                        'warning-orange': '#f59e0b'
+                    },
+                    animation: {
+                        'gradient-shift': 'gradient-shift 3s ease-in-out infinite',
+                        'pulse-soft': 'pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        'gradient-shift': {
+                            '0%, 100%': { 'background-position': '0% 50%' },
+                            '50%': { 'background-position': '100% 50%' }
+                        },
+                        'pulse-soft': {
+                            '0%, 100%': { opacity: '1' },
+                            '50%': { opacity: '0.8' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
+<body class="bg-gray-50 min-h-screen">
     <div id="root">
-        <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+        <!-- Loading State -->
+        <div class="min-h-screen flex items-center justify-center">
             <div class="text-center">
-                <div class="text-6xl mb-4">🤖✨</div>
+                <div class="text-6xl mb-4 animate-pulse-soft">🤖✨</div>
                 <div class="text-xl font-semibold text-gray-800 mb-2">
                     Loading LCv2 System...
                 </div>
-                <div class="text-sm text-gray-600">
-                    Claude Opus 4 + 6 Algorithms Hybrid
+                <div class="text-sm text-gray-600 mb-4">
+                    Claude Sonnet 4 + 6 Algorithms Hybrid
                 </div>
-                <div class="mt-4">
-                    <div class="inline-block w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                <div class="flex justify-center">
+                    <div class="w-8 h-8 border-3 border-claude-purple border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <div class="mt-4 text-xs text-gray-500">
+                    Initializing modular architecture...
                 </div>
             </div>
         </div>
     </div>
     
+    <!-- Vite Entry Point -->
     <script type="module" src="/src/index.js"></script>
 </body>
 </html>
