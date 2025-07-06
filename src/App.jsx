@@ -8,31 +8,32 @@ import QuickSelection from '@components/features/lottery/QuickSelection';
 import TaxCalculator from '@components/features/tax-calculator/TaxCalculator';
 import DataAnalysis from '@components/features/analysis/DataAnalysis';
 import NumberSelector from '@components/features/lottery/NumberSelector';
-import '@styles/globals/index.css';
+// Remove CSS import to avoid PostCSS issues
+// import '@styles/globals/index.css';
 
 const TAB_CONFIG = {
   'quick-selection': {
     id: 'quick-selection',
     label: 'AI Hybrid',
-    icon: '???',
+    icon: '🤖✨',
     component: QuickSelection
   },
   'calculator': {
     id: 'calculator',
     label: 'Calculator',
-    icon: '??',
+    icon: '🎯',
     component: NumberSelector
   },
   'tax-calculator': {
     id: 'tax-calculator',
     label: 'Tax Calculator',
-    icon: '??',
+    icon: '🧮',
     component: TaxCalculator
   },
   'analysis': {
     id: 'analysis',
     label: 'Analysis',
-    icon: '??',
+    icon: '📊',
     component: DataAnalysis
   }
 };
