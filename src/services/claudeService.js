@@ -17,7 +17,7 @@ class ClaudeAPIError extends Error {
 export class ClaudeService {
   constructor() {
     this.baseURL = 'https://api.anthropic.com/v1/messages';
-    this.model = 'claude-3-5-sonnet-20241022'; // Latest Sonnet model
+    this.model = 'claude-3-opus-20240229'; // Claude Opus 4
     this.maxTokens = 4000;
   }
 
@@ -364,17 +364,18 @@ Important: Ensure all numbers are valid (main: 1-69, powerball: 1-26) and provid
   getAvailableModels() {
     return [
       {
-        id: 'claude-3-5-sonnet-20241022',
-        name: 'Claude 3.5 Sonnet',
-        description: 'Most capable model for complex analysis',
+        id: 'claude-3-opus-20240229',
+        name: 'Claude 3 Opus',
+        description: 'Most intelligent model - Claude Opus 4 generation',
         recommended: true
       },
       {
-        id: 'claude-3-opus-20240229',
-        name: 'Claude 3 Opus',
-        description: 'Highest intelligence for maximum accuracy',
+        id: 'claude-3-5-sonnet-20241022',
+        name: 'Claude 3.5 Sonnet',
+        description: 'Fast and capable for complex analysis',
         recommended: false
       },
+
       {
         id: 'claude-3-haiku-20240307',
         name: 'Claude 3 Haiku',

@@ -31,11 +31,11 @@ function QuickSelection() {
   const [historicalData, setHistoricalData] = useState(null);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedModel, setSelectedModel] = useState('claude-3-5-sonnet-20241022');
+  const [selectedModel, setSelectedModel] = useState('claude-3-opus-20240229');
 
   const availableModels = claudeService.getAvailableModels();
 
-  // Load historical data on component mount
+  // Load historical data on component mount with 2000 drawings
   useEffect(() => {
     loadHistoricalData();
   }, []);
@@ -45,7 +45,7 @@ function QuickSelection() {
     setError(null);
     
     try {
-      const result = await powerballService.getHistoricalData(250);
+      const result = await powerballService.getHistoricalData(2000); // Default to 2000
       setHistoricalData(result);
       
       addNotification({
@@ -293,7 +293,7 @@ function QuickSelection() {
             size="sm" 
             className="mt-3"
           >
-            ?? Retry Loading Data
+            🔄 Retry Loading Data
           </Button>
         </Banner>
       </div>
@@ -307,13 +307,13 @@ function QuickSelection() {
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h4 className="text-sm font-semibold text-gray-900">?? Historical Data Loaded</h4>
+              <h4 className="text-sm font-semibold text-gray-900">📊 Historical Data Loaded</h4>
               <p className="text-xs text-gray-600">
                 {historicalData.analysis.totalDrawings} real drawings analyzed from {historicalData.analysis.dataSource}
               </p>
             </div>
             <Button onClick={loadHistoricalData} variant="ghost" size="sm">
-              ?? Refresh Data
+              🔄 Refresh Data
             </Button>
           </div>
         </Card>
@@ -323,16 +323,16 @@ function QuickSelection() {
       <Card.Opus4>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="text-2xl">???</div>
+            <div className="text-2xl">🤖✨</div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Claude AI Integration</h3>
-              <p className="text-sm text-gray-600">Real Claude Sonnet 4 analysis with your API key</p>
+              <h3 className="text-lg font-semibold text-gray-900">Claude Opus 4 Integration</h3>
+              <p className="text-sm text-gray-600">Most intelligent AI model for advanced lottery analysis</p>
             </div>
           </div>
           
           {isClaudeEnabled && (
             <span className="px-3 py-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold rounded-full">
-              ? CLAUDE ACTIVE
+              ✨ OPUS 4 ACTIVE
             </span>
           )}
         </div>
@@ -340,7 +340,7 @@ function QuickSelection() {
         {!isClaudeEnabled ? (
           <div className="space-y-4">
             <Banner type="warning">
-              ?? Using local mathematical analysis only. Connect your Claude API key for advanced AI analysis.
+              ⚠️ Using local mathematical analysis only. Connect your Claude Opus 4 API key for advanced AI analysis.
             </Banner>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -392,7 +392,7 @@ function QuickSelection() {
         ) : (
           <div className="space-y-4">
             <Banner type="opus4">
-              ? Claude AI is connected and ready for advanced lottery analysis
+              ✅ Claude Opus 4 is connected and ready for advanced lottery analysis
             </Banner>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -415,11 +415,11 @@ function QuickSelection() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              {isClaudeEnabled ? '?? AI-Powered Selections' : '?? Mathematical Selections'}
+              {isClaudeEnabled ? '🤖 Claude Opus 4 Selections' : '🎯 Mathematical Selections'}
             </h3>
             <p className="text-sm text-gray-600">
               {isClaudeEnabled 
-                ? 'Claude AI will analyze patterns and generate strategic selections'
+                ? 'Claude Opus 4 will analyze patterns and generate strategic selections'
                 : 'Local algorithms will generate mathematically-based selections'
               }
             </p>
@@ -442,7 +442,7 @@ function QuickSelection() {
           />
         ) : (
           <div className="text-center py-8 text-gray-500">
-            <div className="text-4xl mb-4">??</div>
+            <div className="text-4xl mb-4">🎯</div>
             <p className="text-sm">No selections generated yet.</p>
             {!historicalData && (
               <p className="text-xs mt-2">
@@ -455,7 +455,7 @@ function QuickSelection() {
 
       {/* Disclaimer */}
       <Banner type="info">
-        <strong>Real Analysis:</strong> This system uses actual lottery data and {isClaudeEnabled ? 'Claude AI' : 'mathematical algorithms'} for analysis. 
+        <strong>Real Analysis:</strong> This system uses actual lottery data and {isClaudeEnabled ? 'Claude Opus 4' : 'mathematical algorithms'} for analysis. 
         No system can predict lottery outcomes. All selections are for educational purposes only.
       </Banner>
     </div>

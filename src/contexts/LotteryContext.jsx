@@ -12,7 +12,7 @@ const initialState = {
   // Historical data
   historicalStats: null,
   historicalDataAvailable: false,
-  historicalRecordsLimit: 250,
+  historicalRecordsLimit: 2000, // Default to 2000
   isLoadingHistory: false,
   
   // Generated selections
