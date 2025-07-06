@@ -1,300 +1,137 @@
-// src/components/features/analysis/DataAnalysis.jsx
 import React, { useState, useEffect } from 'react';
-import Card from '../../ui/Card';
-import Button from '../../ui/Button';
-import LoadingSpinner from '../../ui/LoadingSpinner';
-import { dataAnalysisService } from '../../../services/analysis/dataAnalysisService';
+import { useLottery } from '@/contexts/LotteryContext';
+import { useApp } from '@/contexts/AppContext';
+import { powerballService } from '@/services/powerballService';
+import Card from '@components/ui/Card';
+import Button from '@components/ui/Button';
+import LoadingSpinner from '@components/ui/LoadingSpinner';
+import Banner from '@components/ui/Banner';
+import NumberDisplay from '@components/ui/NumberDisplay';
 
 function DataAnalysis() {
-  const [stats, setStats] = useState(null);
-  const [performance, setPerformance] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { historicalStats, liveDataAvailable } = useLottery();
+  const { systemPerformance, isClaudeEnabled, addNotification } = useApp();
+  
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [analysisData, setAnalysisData] = useState(null);
   const [selectedDataRange, setSelectedDataRange] = useState(100);
-  const [activeSection, setActiveSection] = useState('overview');
 
   const dataRangeOptions = [
     { value: 50, label: '50 drawings (2 months)' },
     { value: 100, label: '100 drawings (4 months)' },
     { value: 250, label: '250 drawings (1 year)' },
-    { value: 500, label: '500 drawings (2+ years)' }
+    { value: 500, label: '500 drawings (2 years)' },
+    { value: 1000, label: '1000 drawings (4 years)' }
   ];
 
   useEffect(() => {
-    loadAnalysisData();
-  }, [selectedDataRange]);
+    if (historicalStats) {
+      setAnalysisData(historicalStats);
+    }
+  }, [historicalStats]);
 
-  const loadAnalysisData = async () => {
-    setIsLoading(true);
+  const fetchAnalysisData = async () => {
+    setLoading(true);
+    setError(null);
     
     try {
-      // Simulate loading delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const result = await powerballService.getHistoricalData(selectedDataRange);
+      setAnalysisData(result.analysis);
       
-      const analysisStats = dataAnalysisService.getHistoricalStats(selectedDataRange);
-      const systemPerformance = dataAnalysisService.getSystemPerformance();
+      addNotification({
+        type: 'success',
+        message: `Analysis complete: ${result.analysis.totalDrawings} drawings processed`
+      });
+    } catch (err) {
+      const errorMessage = err.code === 'NETWORK_ERROR' 
+        ? 'Cannot connect to lottery data servers. Check your internet connection.'
+        : err.code === 'API_ERROR'
+        ? 'Lottery data service is temporarily unavailable. Please try again later.'
+        : err.code === 'NO_DATA'
+        ? 'No historical lottery data is available for the requested period.'
+        : `Data analysis failed: ${err.message}`;
       
-      setStats(analysisStats);
-      setPerformance(systemPerformance);
-    } catch (error) {
-      console.error('Failed to load analysis data:', error);
+      setError(errorMessage);
+      addNotification({
+        type: 'error',
+        message: errorMessage
+      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const formatCurrency = (amount) => {
-    return dataAnalysisService.formatCurrency(amount);
+  const refreshData = () => {
+    fetchAnalysisData();
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <Card>
-        <div className="flex items-center justify-center py-12">
-          <LoadingSpinner size="large" />
-          <span className="ml-3 text-gray-600">Loading analysis data...</span>
-        </div>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <LoadingSpinner.Inline message="Analyzing real lottery data..." />
+        </Card>
+      </div>
     );
   }
 
-  const renderOverview = () => (
-    <div className="space-y-6">
-      {/* Data Summary */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4">📊 Data Summary</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">{stats.totalDrawings}</div>
-            <div className="text-sm text-gray-600">Total Drawings</div>
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Banner type="error">
+          <div>
+            <strong>Data Analysis Error:</strong> {error}
           </div>
-          
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">{performance.analysisAccuracy}%</div>
-            <div className="text-sm text-gray-600">Analysis Accuracy</div>
-          </div>
-          
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <div className="text-2xl font-bold text-purple-600">{performance.predictionConfidence}%</div>
-            <div className="text-sm text-gray-600">Prediction Confidence</div>
-          </div>
-          
-          <div className="text-center p-4 bg-orange-50 rounded-lg">
-            <div className="text-2xl font-bold text-orange-600">{performance.dataQuality.toUpperCase()}</div>
-            <div className="text-sm text-gray-600">Data Quality</div>
-          </div>
-        </div>
-        
-        <div className="mt-4 text-sm text-gray-600">
-          <strong>Date Range:</strong> {stats.dateRange.earliest} to {stats.dateRange.latest}
-        </div>
-      </Card>
+          <Button 
+            onClick={refreshData} 
+            variant="ghost" 
+            size="sm" 
+            className="mt-3"
+          >
+            ?? Try Again
+          </Button>
+        </Banner>
+      </div>
+    );
+  }
 
-      {/* Jackpot Statistics */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4">💰 Jackpot Statistics</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="text-center">
-            <div className="text-xl font-bold text-gray-900">{formatCurrency(stats.jackpotStats.average)}</div>
-            <div className="text-sm text-gray-600">Average Jackpot</div>
+  if (!analysisData) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <div className="text-center py-12">
+            <div className="text-4xl mb-4">??</div>
+            <h3 className="text-lg font-semibold mb-2">No Analysis Data Available</h3>
+            <p className="text-gray-600 mb-4">
+              Load real historical lottery data to begin analysis
+            </p>
+            <Button onClick={fetchAnalysisData} variant="primary">
+              Load Real Data
+            </Button>
           </div>
-          
-          <div className="text-center">
-            <div className="text-xl font-bold text-gray-900">{formatCurrency(stats.jackpotStats.median)}</div>
-            <div className="text-sm text-gray-600">Median Jackpot</div>
-          </div>
-          
-          <div className="text-center">
-            <div className="text-xl font-bold text-green-600">{formatCurrency(stats.jackpotStats.max)}</div>
-            <div className="text-sm text-gray-600">Highest Jackpot</div>
-          </div>
-          
-          <div className="text-center">
-            <div className="text-xl font-bold text-blue-600 capitalize">{stats.jackpotStats.trend}</div>
-            <div className="text-sm text-gray-600">Recent Trend</div>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-
-  const renderHotCold = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Hot Numbers */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4 text-red-600">🔥 Hot Numbers</h3>
-        <p className="text-sm text-gray-600 mb-4">Most frequently drawn numbers</p>
-        
-        <div className="space-y-2">
-          {stats.hotNumbers.map((item, index) => (
-            <div key={item.number} className="flex items-center justify-between p-2 bg-red-50 rounded">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-500">#{index + 1}</span>
-                <span className="w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                  {item.number}
-                </span>
-              </div>
-              <div className="text-right">
-                <div className="font-semibold">{item.count} times</div>
-                <div className="text-xs text-gray-600">{item.percentage}%</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Cold Numbers */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4 text-blue-600">❄️ Cold Numbers</h3>
-        <p className="text-sm text-gray-600 mb-4">Least frequently drawn numbers</p>
-        
-        <div className="space-y-2">
-          {stats.coldNumbers.map((item, index) => (
-            <div key={item.number} className="flex items-center justify-between p-2 bg-blue-50 rounded">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-500">#{index + 1}</span>
-                <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                  {item.number}
-                </span>
-              </div>
-              <div className="text-right">
-                <div className="font-semibold">{item.count} times</div>
-                <div className="text-xs text-gray-600">{item.percentage}%</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
-
-  const renderPatterns = () => (
-    <div className="space-y-6">
-      {/* Even/Odd Distribution */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4">⚖️ Even/Odd Distribution</h3>
-        
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {stats.patterns.evenOddDistribution.map((item) => (
-            <div key={item.pattern} className="text-center p-3 bg-gray-50 rounded-lg">
-              <div className="font-bold text-lg">{item.count}</div>
-              <div className="text-sm text-gray-600">{item.pattern}</div>
-              <div className="text-xs text-gray-500">{item.percentage}%</div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Sum Ranges */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4">📊 Sum Range Analysis</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.patterns.sumRanges.map((item) => (
-            <div key={item.range} className="text-center p-3 bg-gray-50 rounded-lg">
-              <div className="font-bold text-lg">{item.count}</div>
-              <div className="text-sm text-gray-600">{item.range}</div>
-              <div className="text-xs text-gray-500">{item.percentage}%</div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Consecutive Numbers */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4">🔗 Pattern Insights</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-4 bg-green-50 rounded-lg">
-            <h4 className="font-semibold mb-2">Consecutive Numbers</h4>
-            <div className="text-2xl font-bold text-green-600">{stats.patterns.consecutiveNumbers.count}</div>
-            <div className="text-sm text-gray-600">
-              {stats.patterns.consecutiveNumbers.percentage}% of drawings had consecutive numbers
-            </div>
-          </div>
-          
-          <div className="p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold mb-2">Overdue Numbers</h4>
-            <div className="flex flex-wrap gap-1">
-              {stats.patterns.gaps.overdue.slice(0, 5).map(item => (
-                <span key={item.number} className="px-2 py-1 bg-blue-600 text-white rounded text-sm">
-                  {item.number}
-                </span>
-              ))}
-            </div>
-            <div className="text-xs text-gray-600 mt-1">
-              Numbers not drawn recently
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
-
-  const renderPowerball = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Hot Powerballs */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4 text-red-600">🔥 Hot Powerballs</h3>
-        
-        <div className="space-y-2">
-          {stats.powerballStats.hotPowerballs.map((item, index) => (
-            <div key={item.number} className="flex items-center justify-between p-2 bg-red-50 rounded">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-500">#{index + 1}</span>
-                <span className="w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                  {item.number}
-                </span>
-              </div>
-              <div className="text-right">
-                <div className="font-semibold">{item.count} times</div>
-                <div className="text-xs text-gray-600">{item.percentage}%</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Cold Powerballs */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4 text-blue-600">❄️ Cold Powerballs</h3>
-        
-        <div className="space-y-2">
-          {stats.powerballStats.coldPowerballs.map((item, index) => (
-            <div key={item.number} className="flex items-center justify-between p-2 bg-blue-50 rounded">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-500">#{index + 1}</span>
-                <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                  {item.number}
-                </span>
-              </div>
-              <div className="text-right">
-                <div className="font-semibold">{item.count} times</div>
-                <div className="text-xs text-gray-600">{item.percentage}%</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Controls */}
+      {/* Data Source & Controls */}
       <Card>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-xl font-bold">📊 Data Analysis</h2>
-            <p className="text-sm text-gray-600">Historical lottery data insights and patterns</p>
+            <h3 className="text-lg font-semibold text-gray-900">?? Real Data Analysis</h3>
+            <p className="text-sm text-gray-600">
+              Analyzing {analysisData.totalDrawings} real Powerball drawings
+            </p>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <select
               value={selectedDataRange}
               onChange={(e) => setSelectedDataRange(parseInt(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {dataRangeOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -303,42 +140,177 @@ function DataAnalysis() {
               ))}
             </select>
             
-            <Button onClick={loadAnalysisData} size="small">
-              🔄 Refresh
+            <Button 
+              onClick={refreshData} 
+              variant="secondary" 
+              size="sm"
+            >
+              ?? Refresh
             </Button>
+          </div>
+        </div>
+
+        {/* Data Info */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="font-medium text-gray-900">Data Source</div>
+            <div className="text-gray-600">{analysisData.dataSource}</div>
+          </div>
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="font-medium text-gray-900">Date Range</div>
+            <div className="text-gray-600">
+              {analysisData.dateRange.earliest} to {analysisData.dateRange.latest}
+            </div>
+          </div>
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="font-medium text-gray-900">Last Updated</div>
+            <div className="text-gray-600">
+              {new Date(analysisData.lastUpdated).toLocaleDateString()}
+            </div>
           </div>
         </div>
       </Card>
 
-      {/* Section Navigation */}
+      {/* Number Frequency Analysis */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <h4 className="font-semibold text-gray-900 mb-4">?? Most Frequent Numbers</h4>
+          <div className="space-y-4">
+            <div>
+              <h5 className="text-sm font-medium text-gray-700 mb-2">Main Numbers (1-69)</h5>
+              <div className="flex flex-wrap gap-2">
+                {analysisData.numberAnalysis.hotNumbers.map((num, index) => (
+                  <div key={num} className="text-center">
+                    <NumberDisplay
+                      number={num}
+                      variant="hot"
+                      size="sm"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      {analysisData.numberAnalysis.frequency[num]} times
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div>
+              <h5 className="text-sm font-medium text-gray-700 mb-2">Hot Powerballs (1-26)</h5>
+              <div className="flex flex-wrap gap-2">
+                {analysisData.powerballAnalysis.hotPowerballs.slice(0, 8).map(num => (
+                  <div key={num} className="text-center">
+                    <NumberDisplay
+                      number={num}
+                      variant="hot"
+                      size="sm"
+                      isPowerball
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      {analysisData.powerballAnalysis.frequency[num]} times
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <h4 className="font-semibold text-gray-900 mb-4">?? Least Frequent Numbers</h4>
+          <div className="space-y-4">
+            <div>
+              <h5 className="text-sm font-medium text-gray-700 mb-2">Main Numbers (1-69)</h5>
+              <div className="flex flex-wrap gap-2">
+                {analysisData.numberAnalysis.coldNumbers.map(num => (
+                  <div key={num} className="text-center">
+                    <NumberDisplay
+                      number={num}
+                      variant="cold"
+                      size="sm"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">
+                      {analysisData.numberAnalysis.frequency[num] || 0} times
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Pattern Analysis */}
       <Card>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: 'overview', label: '📊 Overview' },
-            { id: 'hot-cold', label: '🔥 Hot/Cold Numbers' },
-            { id: 'patterns', label: '📈 Patterns' },
-            { id: 'powerball', label: '⚡ Powerball Analysis' }
-          ].map(section => (
-            <button
-              key={section.id}
-              onClick={() => setActiveSection(section.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeSection === section.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {section.label}
-            </button>
-          ))}
+        <h4 className="font-semibold text-gray-900 mb-4">?? Pattern Analysis</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-blue-600 mb-2">
+              {Math.round(analysisData.patterns.averageSum)}
+            </div>
+            <div className="text-sm font-medium text-gray-900">Average Sum</div>
+            <div className="text-xs text-gray-500">
+              Range: {analysisData.patterns.sumRange.min} - {analysisData.patterns.sumRange.max}
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-3xl font-bold text-green-600 mb-2">
+              {analysisData.patterns.averageConsecutive.toFixed(1)}
+            </div>
+            <div className="text-sm font-medium text-gray-900">Avg Consecutive</div>
+            <div className="text-xs text-gray-500">
+              Numbers in sequence
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-3xl font-bold text-purple-600 mb-2">
+              {analysisData.totalDrawings}
+            </div>
+            <div className="text-sm font-medium text-gray-900">Total Drawings</div>
+            <div className="text-xs text-gray-500">
+              Analyzed in dataset
+            </div>
+          </div>
         </div>
       </Card>
 
-      {/* Content */}
-      {activeSection === 'overview' && renderOverview()}
-      {activeSection === 'hot-cold' && renderHotCold()}
-      {activeSection === 'patterns' && renderPatterns()}
-      {activeSection === 'powerball' && renderPowerball()}
+      {/* System Status */}
+      <Card>
+        <h4 className="font-semibold text-gray-900 mb-4">?? System Status</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <h5 className="font-medium text-sm mb-2 text-gray-900">Data Connection</h5>
+            <p className="text-sm text-gray-700">
+              {liveDataAvailable ? '? Connected to real data sources' : '? No live data connection'}
+            </p>
+          </div>
+          
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <h5 className="font-medium text-sm mb-2 text-gray-900">AI Enhancement</h5>
+            <p className="text-sm text-gray-700">
+              {isClaudeEnabled ? '? Claude AI integration active' : '?? Local analysis only'}
+            </p>
+          </div>
+          
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <h5 className="font-medium text-sm mb-2 text-gray-900">Analysis Quality</h5>
+            <p className="text-sm text-gray-700">
+              {analysisData.totalDrawings >= 100 
+                ? '? Sufficient data for reliable analysis' 
+                : '?? Limited data - results may vary'
+              }
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Data Disclaimer */}
+      <Banner type="info">
+        <strong>Real Data Analysis:</strong> This dashboard uses actual historical Powerball drawing data. 
+        Analysis is based on mathematical patterns and statistical frequencies. Past results do not guarantee future outcomes.
+        Lottery games involve chance and no analysis can predict winning numbers.
+      </Banner>
     </div>
   );
 }
