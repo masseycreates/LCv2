@@ -261,6 +261,20 @@ export function LotteryProvider({ children }) {
         
         return { success: true };
       } catch (error) {
+        // Handle CORS restrictions gracefully
+        if (error.code === 'CORS_RESTRICTION') {
+          // Set next drawing info even when jackpot fetch fails
+          const nextDrawing = powerballService.getNextDrawingInfo();
+          dispatch({ 
+            type: 'SET_NEXT_DRAWING', 
+            payload: `${nextDrawing.date} @ ${nextDrawing.time}`
+          });
+          
+          // Don't treat CORS as a fatal error - just inform user
+          console.warn('Jackpot fetch limited by CORS policy');
+          return { success: true, warning: error.message };
+        }
+        
         dispatch({ 
           type: 'SET_DATA_ERROR', 
           payload: { 

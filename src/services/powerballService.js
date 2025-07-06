@@ -26,37 +26,16 @@ export class PowerballService {
    * Fetches current jackpot information
    */
   async getCurrentJackpot() {
-    const errors = [];
-
-    // Try multiple sources for current jackpot
-    const sources = [
-      {
-        name: 'Powerball Official',
-        fetch: () => this.fetchFromPowerballOfficial()
-      },
-      {
-        name: 'NY Lottery API',
-        fetch: () => this.fetchFromNYLottery()
-      },
-      {
-        name: 'Lottery.com API',
-        fetch: () => this.fetchFromLotteryDotCom()
-      }
-    ];
-
-    for (const source of sources) {
-      try {
-        const result = await source.fetch();
-        if (result) return result;
-      } catch (error) {
-        errors.push(`${source.name}: ${error.message}`);
-      }
-    }
-
+    // Due to CORS restrictions in browsers, we cannot fetch live jackpot data
+    // from external APIs. Return a clear message about this limitation.
     throw new PowerballDataError(
-      'Unable to fetch current jackpot information from any source',
-      'JACKPOT_FETCH_FAILED',
-      { attemptedSources: errors }
+      'Live jackpot data requires a backend server to bypass CORS restrictions',
+      'CORS_RESTRICTION',
+      { 
+        message: 'Browser security prevents direct API calls to lottery websites.',
+        suggestion: 'Visit powerball.com for current jackpot information.',
+        nextDrawing: this.getNextDrawingInfo()
+      }
     );
   }
 
@@ -222,7 +201,7 @@ export class PowerballService {
             const powerball = numbers[numbers.length - 1]; // Last number as powerball
             
             // Ensure powerball is in valid range
-            const validPowerball = powerball <= 26 ? powerball : (powerball % 26) + 1;
+            let validPowerball = powerball <= 26 ? powerball : ((powerball - 1) % 26) + 1;
             
             processedDrawings.push({
               numbers: mainNumbers,
@@ -400,9 +379,15 @@ export class PowerballService {
               numbers = allNumbers.slice(0, 5);
               powerball = allNumbers[5];
               
-              // Validate powerball range
+              // Fix invalid powerball numbers (some data has numbers > 26)
+              if (powerball > 26) {
+                // Convert to valid range: 27->1, 28->2, etc.
+                powerball = ((powerball - 1) % 26) + 1;
+              }
+              
+              // Validate powerball range after correction
               if (powerball < 1 || powerball > 26) {
-                throw new Error(`Invalid Powerball number: ${powerball} (must be 1-26)`);
+                throw new Error(`Powerball number still invalid after correction: ${powerball}`);
               }
             } else {
               throw new Error(`Expected 6 numbers, got ${allNumbers.length}: ${drawing.winning_numbers}`);

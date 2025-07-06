@@ -1,14 +1,68 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LCv2 - Modular Lottery System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>LCv2 - Claude Opus 4 Lottery System</title>
+    <meta name="description" content="Advanced lottery analysis system powered by Claude Opus 4 AI and mathematical algorithms">
+    
+    <!-- Remove Tailwind CDN - now using proper PostCSS setup -->
+    
+    <style>
+      /* Critical CSS for loading states */
+      .loading-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 16px;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Hide loading when app loads */
+      .app-loaded .loading-container {
+        display: none;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Loading state while app initializes -->
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <div>
+          <h1>LCv2 Loading...</h1>
+          <p>Initializing Claude Opus 4 Lottery System</p>
+        </div>
+      </div>
+    </div>
+    
     <script type="module" src="/src/main.jsx"></script>
+    
+    <script>
+      // Remove loading state when React app mounts
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          document.body.classList.add('app-loaded');
+        }, 1000);
+      });
+    </script>
   </body>
 </html>
