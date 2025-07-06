@@ -102,7 +102,7 @@ export class ClaudeService {
       return {
         success: true,
         model: data.model,
-        message: 'Claude API connection successful',
+        message: 'Claude Opus 4 connection successful',
         usage: data.usage
       };
 
@@ -375,7 +375,6 @@ Important: Ensure all numbers are valid (main: 1-69, powerball: 1-26) and provid
         description: 'Fast and capable for complex analysis',
         recommended: false
       },
-
       {
         id: 'claude-3-haiku-20240307',
         name: 'Claude 3 Haiku',

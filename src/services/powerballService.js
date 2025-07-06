@@ -18,8 +18,6 @@ export class PowerballService {
   constructor() {
     // NY Lottery API is one of the most reliable sources
     this.baseURL = 'https://data.ny.gov/resource/d6yy-54nr.json';
-    this.backup1URL = 'https://www.powerball.com/api/v1/estimates/powerball';
-    this.backup2URL = 'https://api.lottery.com/api/v2/drawings/powerball';
   }
 
   /**
@@ -130,6 +128,107 @@ export class PowerballService {
 
     const data = await response.json();
     return this.processHistoricalDataSimplified(data, limit);
+  }
+
+  processHistoricalData(rawData, requestedLimit) {
+    try {
+      const processedDrawings = rawData
+        .slice(0, requestedLimit)
+        .map(drawing => {
+          // Parse numbers from different possible formats
+          let numbers, powerball;
+          
+          if (drawing.winning_numbers) {
+            // NY Lottery format can be:
+            // "01 02 03 04 05 PB:06" OR "01 02 03 04 05 06" (where last is powerball)
+            const allNumbers = drawing.winning_numbers
+              .replace(/\s*PB:\s*/, ' ') // Remove PB: separator if present
+              .split(/\s+/) // Split on any whitespace
+              .map(n => parseInt(n.trim()))
+              .filter(n => !isNaN(n) && n >= 1 && n <= 69);
+
+            if (allNumbers.length === 6) {
+              // Standard format: 5 main numbers + 1 powerball
+              numbers = allNumbers.slice(0, 5);
+              powerball = allNumbers[5];
+              
+              // Fix invalid powerball numbers (some data has numbers > 26)
+              if (powerball > 26) {
+                // Convert to valid range: 27->1, 28->2, etc.
+                powerball = ((powerball - 1) % 26) + 1;
+              }
+              
+              // Validate powerball range after correction
+              if (powerball < 1 || powerball > 26) {
+                throw new Error(`Powerball number still invalid after correction: ${powerball}`);
+              }
+            } else {
+              throw new Error(`Expected 6 numbers, got ${allNumbers.length}: ${drawing.winning_numbers}`);
+            }
+          } else if (drawing.numbers && drawing.powerball) {
+            // Direct format
+            numbers = drawing.numbers;
+            powerball = drawing.powerball;
+          } else {
+            throw new Error(`No winning numbers found in drawing data`);
+          }
+
+          // Validate main numbers
+          if (!numbers || numbers.length !== 5) {
+            throw new Error(`Invalid main numbers: expected 5, got ${numbers ? numbers.length : 0}`);
+          }
+
+          // Check for valid number ranges
+          const invalidMainNumbers = numbers.filter(n => n < 1 || n > 69);
+          if (invalidMainNumbers.length > 0) {
+            throw new Error(`Invalid main numbers outside 1-69 range: ${invalidMainNumbers.join(', ')}`);
+          }
+
+          // Check for duplicates
+          const uniqueNumbers = new Set(numbers);
+          if (uniqueNumbers.size !== 5) {
+            throw new Error(`Duplicate numbers found in main selection: ${numbers.join(', ')}`);
+          }
+
+          return {
+            numbers: numbers.sort((a, b) => a - b),
+            powerball: powerball,
+            date: drawing.draw_date || drawing.date,
+            multiplier: drawing.multiplier || null
+          };
+        })
+        .filter(drawing => drawing.numbers && drawing.numbers.length === 5 && drawing.powerball);
+
+      if (processedDrawings.length === 0) {
+        throw new PowerballDataError(
+          'No valid drawings found in the data. The lottery data format may have changed.',
+          'INVALID_DATA_FORMAT',
+          { 
+            sampleData: rawData.slice(0, 3),
+            message: 'Check the data format from the lottery API'
+          }
+        );
+      }
+
+      // Log successful processing for debugging
+      console.log(`Successfully processed ${processedDrawings.length} drawings from ${rawData.length} raw entries`);
+
+      return {
+        drawings: processedDrawings,
+        analysis: this.analyzeHistoricalData(processedDrawings)
+      };
+    } catch (error) {
+      if (error instanceof PowerballDataError) throw error;
+      
+      throw new PowerballDataError(
+        `Error processing historical data: ${error.message}`,
+        'DATA_PROCESSING_ERROR',
+        { 
+          originalError: error.message,
+          sampleData: rawData.slice(0, 2) // Include sample for debugging
+        }
+      );
+    }
   }
 
   processHistoricalDataAlternative(rawData, requestedLimit) {
@@ -315,160 +414,6 @@ export class PowerballService {
         'ANALYSIS_ERROR'
       );
     }
-  }
-
-  // Private methods for different data sources
-
-  async fetchFromPowerballOfficial() {
-    try {
-      const response = await fetch('https://www.powerball.com/api/v1/estimates/powerball');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
-      const data = await response.json();
-      return this.formatJackpotData(data, 'Powerball Official');
-    } catch (error) {
-      throw new Error(`Powerball official API error: ${error.message}`);
-    }
-  }
-
-  async fetchFromNYLottery() {
-    try {
-      const response = await fetch(`${this.baseURL}?$limit=1&$order=draw_date DESC`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
-      const data = await response.json();
-      if (!data || data.length === 0) throw new Error('No data returned');
-      
-      return this.formatJackpotData(data[0], 'NY Lottery');
-    } catch (error) {
-      throw new Error(`NY Lottery API error: ${error.message}`);
-    }
-  }
-
-  async fetchFromLotteryDotCom() {
-    try {
-      const response = await fetch('https://api.lottery.com/api/v2/drawings/powerball?limit=1');
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      
-      const data = await response.json();
-      return this.formatJackpotData(data, 'Lottery.com');
-    } catch (error) {
-      throw new Error(`Lottery.com API error: ${error.message}`);
-    }
-  }
-
-  processHistoricalData(rawData, requestedLimit) {
-    try {
-      const processedDrawings = rawData
-        .slice(0, requestedLimit)
-        .map(drawing => {
-          // Parse numbers from different possible formats
-          let numbers, powerball;
-          
-          if (drawing.winning_numbers) {
-            // NY Lottery format can be:
-            // "01 02 03 04 05 PB:06" OR "01 02 03 04 05 06" (where last is powerball)
-            const allNumbers = drawing.winning_numbers
-              .replace(/\s*PB:\s*/, ' ') // Remove PB: separator if present
-              .split(/\s+/) // Split on any whitespace
-              .map(n => parseInt(n.trim()))
-              .filter(n => !isNaN(n) && n >= 1 && n <= 69);
-
-            if (allNumbers.length === 6) {
-              // Standard format: 5 main numbers + 1 powerball
-              numbers = allNumbers.slice(0, 5);
-              powerball = allNumbers[5];
-              
-              // Fix invalid powerball numbers (some data has numbers > 26)
-              if (powerball > 26) {
-                // Convert to valid range: 27->1, 28->2, etc.
-                powerball = ((powerball - 1) % 26) + 1;
-              }
-              
-              // Validate powerball range after correction
-              if (powerball < 1 || powerball > 26) {
-                throw new Error(`Powerball number still invalid after correction: ${powerball}`);
-              }
-            } else {
-              throw new Error(`Expected 6 numbers, got ${allNumbers.length}: ${drawing.winning_numbers}`);
-            }
-          } else if (drawing.numbers && drawing.powerball) {
-            // Direct format
-            numbers = drawing.numbers;
-            powerball = drawing.powerball;
-          } else {
-            throw new Error(`No winning numbers found in drawing data`);
-          }
-
-          // Validate main numbers
-          if (!numbers || numbers.length !== 5) {
-            throw new Error(`Invalid main numbers: expected 5, got ${numbers ? numbers.length : 0}`);
-          }
-
-          // Check for valid number ranges
-          const invalidMainNumbers = numbers.filter(n => n < 1 || n > 69);
-          if (invalidMainNumbers.length > 0) {
-            throw new Error(`Invalid main numbers outside 1-69 range: ${invalidMainNumbers.join(', ')}`);
-          }
-
-          // Check for duplicates
-          const uniqueNumbers = new Set(numbers);
-          if (uniqueNumbers.size !== 5) {
-            throw new Error(`Duplicate numbers found in main selection: ${numbers.join(', ')}`);
-          }
-
-          return {
-            numbers: numbers.sort((a, b) => a - b),
-            powerball: powerball,
-            date: drawing.draw_date || drawing.date,
-            multiplier: drawing.multiplier || null
-          };
-        })
-        .filter(drawing => drawing.numbers && drawing.numbers.length === 5 && drawing.powerball);
-
-      if (processedDrawings.length === 0) {
-        throw new PowerballDataError(
-          'No valid drawings found in the data. The lottery data format may have changed.',
-          'INVALID_DATA_FORMAT',
-          { 
-            sampleData: rawData.slice(0, 3),
-            message: 'Check the data format from the lottery API'
-          }
-        );
-      }
-
-      // Log successful processing for debugging
-      console.log(`Successfully processed ${processedDrawings.length} drawings from ${rawData.length} raw entries`);
-
-      return {
-        drawings: processedDrawings,
-        analysis: this.analyzeHistoricalData(processedDrawings)
-      };
-    } catch (error) {
-      if (error instanceof PowerballDataError) throw error;
-      
-      throw new PowerballDataError(
-        `Error processing historical data: ${error.message}`,
-        'DATA_PROCESSING_ERROR',
-        { 
-          originalError: error.message,
-          sampleData: rawData.slice(0, 2) // Include sample for debugging
-        }
-      );
-    }
-  }
-
-  formatJackpotData(data, source) {
-    // This would need to be adapted based on each API's actual response format
-    // Since we don't have access to real APIs, we'll return a clear error
-    throw new PowerballDataError(
-      `Real jackpot data integration requires API access. Source: ${source}`,
-      'API_ACCESS_REQUIRED',
-      { 
-        message: 'This app requires valid API endpoints or web scraping capabilities to fetch real jackpot data.',
-        suggestion: 'Consider using a lottery data service or implementing web scraping with a backend service.'
-      }
-    );
   }
 
   /**

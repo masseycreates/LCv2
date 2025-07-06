@@ -48,21 +48,4 @@ LoadingSpinner.Inline = function InlineSpinner({
   );
 };
 
-// Overlay spinner (full coverage)
-LoadingSpinner.Overlay = function OverlaySpinner({ 
-  message = 'Loading...',
-  variant = 'default' 
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 shadow-xl">
-        <div className="flex items-center gap-3">
-          <LoadingSpinner size="lg" variant={variant} />
-          <span className="text-gray-700 font-medium">{message}</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export default LoadingSpinner;

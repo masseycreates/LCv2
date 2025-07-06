@@ -18,11 +18,11 @@ function Banner({
   };
 
   const icons = {
-    info: 'ℹ️',
-    success: '✅',
-    warning: '⚠️',
-    error: '❌',
-    opus4: '🤖✨'
+    info: '??',
+    success: '?',
+    warning: '??',
+    error: '?',
+    opus4: '???'
   };
 
   return (
@@ -48,7 +48,7 @@ function Banner({
             onClick={onDismiss}
             className="flex-shrink-0 ml-2 text-current opacity-60 hover:opacity-100 transition-opacity"
           >
-            ✕
+            ?
           </button>
         )}
       </div>

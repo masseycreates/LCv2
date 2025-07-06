@@ -91,7 +91,7 @@ function DataAnalysis() {
             size="sm" 
             className="mt-3"
           >
-            🔄 Try Again
+            ?? Try Again
           </Button>
         </Banner>
       </div>
@@ -103,7 +103,7 @@ function DataAnalysis() {
       <div className="space-y-6">
         <Card>
           <div className="text-center py-12">
-            <div className="text-4xl mb-4">📊</div>
+            <div className="text-4xl mb-4">??</div>
             <h3 className="text-lg font-semibold mb-2">No Analysis Data Available</h3>
             <p className="text-gray-600 mb-4">
               Load real historical lottery data to begin analysis
@@ -123,7 +123,7 @@ function DataAnalysis() {
       <Card>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">📊 Real Data Analysis</h3>
+            <h3 className="text-lg font-semibold text-gray-900">?? Real Data Analysis</h3>
             <p className="text-sm text-gray-600">
               Analyzing {analysisData.totalDrawings} real Powerball drawings
             </p>
@@ -147,7 +147,7 @@ function DataAnalysis() {
               variant="secondary" 
               size="sm"
             >
-              🔄 Refresh
+              ?? Refresh
             </Button>
           </div>
         </div>
@@ -176,7 +176,7 @@ function DataAnalysis() {
       {/* Number Frequency Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <h4 className="font-semibold text-gray-900 mb-4">🔥 Most Frequent Numbers</h4>
+          <h4 className="font-semibold text-gray-900 mb-4">?? Most Frequent Numbers</h4>
           <div className="space-y-4">
             <div>
               <h5 className="text-sm font-medium text-gray-700 mb-2">Main Numbers (1-69)</h5>
@@ -218,7 +218,7 @@ function DataAnalysis() {
         </Card>
 
         <Card>
-          <h4 className="font-semibold text-gray-900 mb-4">❄️ Least Frequent Numbers</h4>
+          <h4 className="font-semibold text-gray-900 mb-4">?? Least Frequent Numbers</h4>
           <div className="space-y-4">
             <div>
               <h5 className="text-sm font-medium text-gray-700 mb-2">Main Numbers (1-69)</h5>
@@ -243,7 +243,7 @@ function DataAnalysis() {
 
       {/* Pattern Analysis */}
       <Card>
-        <h4 className="font-semibold text-gray-900 mb-4">📈 Pattern Analysis</h4>
+        <h4 className="font-semibold text-gray-900 mb-4">?? Pattern Analysis</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="text-3xl font-bold text-blue-600 mb-2">
@@ -279,19 +279,19 @@ function DataAnalysis() {
 
       {/* System Status */}
       <Card>
-        <h4 className="font-semibold text-gray-900 mb-4">⚙️ System Status</h4>
+        <h4 className="font-semibold text-gray-900 mb-4">?? System Status</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 bg-gray-50 rounded-lg">
             <h5 className="font-medium text-sm mb-2 text-gray-900">Data Connection</h5>
             <p className="text-sm text-gray-700">
-              {liveDataAvailable ? '✅ Connected to real data sources' : '❌ No live data connection'}
+              {liveDataAvailable ? '? Connected to real data sources' : '? No live data connection'}
             </p>
           </div>
           
           <div className="p-4 bg-gray-50 rounded-lg">
             <h5 className="font-medium text-sm mb-2 text-gray-900">AI Enhancement</h5>
             <p className="text-sm text-gray-700">
-              {isClaudeEnabled ? '✅ Claude AI integration active' : '⚠️ Local analysis only'}
+              {isClaudeEnabled ? '? Claude Opus 4 integration active' : '?? Local analysis only'}
             </p>
           </div>
           
@@ -299,8 +299,8 @@ function DataAnalysis() {
             <h5 className="font-medium text-sm mb-2 text-gray-900">Analysis Quality</h5>
             <p className="text-sm text-gray-700">
               {analysisData.totalDrawings >= 100 
-                ? '✅ Sufficient data for reliable analysis' 
-                : '⚠️ Limited data - results may vary'
+                ? '? Sufficient data for reliable analysis' 
+                : '?? Limited data - results may vary'
               }
             </p>
           </div>

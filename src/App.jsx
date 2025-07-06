@@ -15,25 +15,25 @@ const TAB_CONFIG = {
   'quick-selection': {
     id: 'quick-selection',
     label: 'AI Hybrid',
-    icon: '🤖✨',
+    icon: '???',
     component: QuickSelection
   },
   'calculator': {
     id: 'calculator',
     label: 'Calculator',
-    icon: '🎯',
+    icon: '??',
     component: NumberSelector
   },
   'tax-calculator': {
     id: 'tax-calculator',
     label: 'Tax Calculator',
-    icon: '🧮',
+    icon: '??',
     component: TaxCalculator
   },
   'analysis': {
     id: 'analysis',
     label: 'Analysis',
-    icon: '📊',
+    icon: '??',
     component: DataAnalysis
   }
 };
