@@ -6,30 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LCv2 - Claude Opus 4 Lottery System</title>
     <meta name="description" content="Advanced lottery analysis system powered by Claude Opus 4 AI and mathematical algorithms">
-    
-    <!-- Tailwind CDN - working solution -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            gridTemplateColumns: {
-              '13': 'repeat(13, minmax(0, 1fr))',
-              '10': 'repeat(10, minmax(0, 1fr))',
-            },
-            animation: {
-              'shimmer': 'shimmer 7s ease-in-out infinite',
-            },
-            keyframes: {
-              shimmer: {
-                '0%, 100%': { transform: 'translateX(-100%)' },
-                '50%': { transform: 'translateX(100%)' }
-              }
-            }
-          }
-        }
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>

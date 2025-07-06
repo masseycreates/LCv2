@@ -454,9 +454,9 @@ function QuickSelection() {
           </Button>
         </div>
 
-        {quickSelectionSets.length > 0 ? (
+        {quickSelectionSets && quickSelectionSets.length > 0 ? (
           <div className="space-y-4">
-            {quickSelectionSets.map((selection, index) => (
+            {(quickSelectionSets || []).map((selection, index) => (
               <div key={selection.id || index} className="p-4 border rounded-lg">
                 <h4 className="font-semibold mb-2">{selection.name}</h4>
                 <div className="flex items-center gap-2 mb-2">
