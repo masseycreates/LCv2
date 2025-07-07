@@ -1,10 +1,10 @@
 // LCv2 Main Lottery System Component - Modular Architecture
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Header from './Header.js';
-import QuickSelection from './QuickSelection.js';
+import Header from './Header.jsx';
+import QuickSelection from './QuickSelection.jsx';
 import NumberSelector from './NumberSelector.jsx';
-import TaxCalculator from './TaxCalculator.js';
-import DataAnalysis from './DataAnalysis.js';
+import TaxCalculator from './TaxCalculator.jsx';
+import DataAnalysis from './DataAnalysis.jsx';
 import { powerballAPI } from '../services/PowerballAPI.js';
 import { lotteryPredictor } from '../services/LotteryPredictor.js';
 import { UI_CONFIG, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../utils/constants.js';

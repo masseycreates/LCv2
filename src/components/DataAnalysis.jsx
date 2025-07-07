@@ -168,7 +168,7 @@ export default function DataAnalysis({
       localStorage: typeof localStorage !== 'undefined',
       fetch: typeof fetch !== 'undefined',
       promises: typeof Promise !== 'undefined',
-      modules: typeof import !== 'undefined',
+      modules: typeof window !== 'undefined',  // ✅ Check for browser environment
       webWorkers: typeof Worker !== 'undefined',
       clipboard: typeof navigator?.clipboard !== 'undefined'
     };
