@@ -1,365 +1,217 @@
-// LCv2 Main Lottery System Component - Modular Architecture
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Header from './Header.jsx';
-import QuickSelection from './QuickSelection.jsx';
-import NumberSelector from './NumberSelector.jsx';
-import TaxCalculator from './TaxCalculator.jsx';
-import DataAnalysis from './DataAnalysis.jsx';
+// src/components/LotterySystem.jsx - Enhanced LCv2 Main Application
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { powerballAPI } from '../services/PowerballAPI.js';
 import { lotteryPredictor } from '../services/LotteryPredictor.js';
-import { UI_CONFIG, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../utils/constants.js';
+import { claudeAPI } from '../services/ClaudeAPI.js';
+import { formatCurrency, formatPercentage, debounce } from '../utils/helpers.js';
+import { APP_CONFIG, FEATURE_FLAGS } from '../utils/constants.js';
+
+// Import components
+import Header from './Header.jsx';
+import JackpotDisplay from './JackpotDisplay.jsx';
+import QuickSelection from './QuickSelection.jsx';
+import DataAnalysis from './DataAnalysis.jsx';
+import TaxCalculator from './TaxCalculator.jsx';
+import About from './About.jsx';
+import ErrorBoundary from './ErrorBoundary.jsx';
 
 export default function LotterySystem() {
   // ===========================================================================
-  // CORE STATE MANAGEMENT
+  // ENHANCED STATE MANAGEMENT
   // ===========================================================================
   
-  // Navigation state
-  const [activeTab, setActiveTab] = useState('quick-selection');
+  const [currentTab, setCurrentTab] = useState('quick');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [dataStatus, setDataStatus] = useState('?? Initializing lottery intelligence system...');
+  const [error, setError] = useState(null);
   
   // Data state
   const [currentJackpot, setCurrentJackpot] = useState(null);
+  const [nextDrawDate, setNextDrawDate] = useState(null);
   const [historicalStats, setHistoricalStats] = useState(null);
-  const [nextDrawDate, setNextDrawDate] = useState('');
-  
-  // Status tracking
   const [liveDataAvailable, setLiveDataAvailable] = useState(false);
-  const [historicalDataAvailable, setHistoricalDataAvailable] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [dataStatus, setDataStatus] = useState('');
-  const [lastUpdated, setLastUpdated] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(null);
   
-  // Configuration
-  const [historicalRecordsLimit, setHistoricalRecordsLimit] = useState(500);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  
-  // Performance tracking
+  // Performance monitoring
   const [systemPerformance, setSystemPerformance] = useState(null);
   const [errorLog, setErrorLog] = useState([]);
+  const updateCountRef = useRef(0);
+  const initStartTime = useRef(performance.now());
 
   // ===========================================================================
-  // TAB CONFIGURATION
+  // ENHANCED TAB CONFIGURATION
   // ===========================================================================
   
-  const tabConfig = useMemo(() => [
+  const tabs = [
     {
-      id: 'quick-selection',
-      label: 'AI Hybrid',
-      icon: '???',
-      description: 'Claude Sonnet 4 + 6 Algorithms'
-    },
-    {
-      id: 'calculator',
-      label: 'Manual Pick',
-      icon: '??',
-      description: 'Manual number selection'
-    },
-    {
-      id: 'tax-calculator',
-      label: 'Tax Calculator',
-      icon: '??',
-      description: 'Winning tax analysis'
+      id: 'quick',
+      label: 'Quick Selection',
+      icon: '?',
+      description: 'AI-powered number generation with 6 algorithms',
+      component: QuickSelection
     },
     {
       id: 'analysis',
-      label: 'System Analysis',
+      label: 'Data Analysis',
       icon: '??',
-      description: 'Data & diagnostics'
+      description: 'Historical patterns and system diagnostics',
+      component: DataAnalysis
+    },
+    {
+      id: 'tax',
+      label: 'Tax Calculator',
+      icon: '??',
+      description: 'Prize calculations and tax estimations',
+      component: TaxCalculator
+    },
+    {
+      id: 'about',
+      label: 'About',
+      icon: '??',
+      description: 'System information and usage guide',
+      component: About
     }
-  ], []);
+  ];
 
   // ===========================================================================
-  // INITIALIZATION & DATA LOADING
-  // ===========================================================================
-  
-  useEffect(() => {
-    initializeSystem();
-  }, []);
-
-  const initializeSystem = async () => {
-    setDataStatus('?? Initializing LCv2 system...');
-    
-    try {
-      // Initialize services
-      await initializeServices();
-      
-      // Load initial data
-      await loadInitialData();
-      
-      // Setup performance monitoring
-      setupPerformanceMonitoring();
-      
-      setDataStatus('? LCv2 system initialized successfully');
-      
-      // Auto-refresh every 30 minutes
-      const refreshInterval = setInterval(refreshAllData, 30 * 60 * 1000);
-      return () => clearInterval(refreshInterval);
-      
-    } catch (error) {
-      console.error('System initialization failed:', error);
-      logError('System Initialization', error);
-      setDataStatus(`? Initialization failed: ${error.message}`);
-    }
-  };
-
-  const initializeServices = async () => {
-    try {
-      // Test API connectivity
-      const connectivity = await powerballAPI.testConnectivity();
-      console.log('?? API Connectivity:', connectivity.success ? 'Connected' : 'Failed');
-      
-      if (!connectivity.success) {
-        throw new Error('API connectivity test failed');
-      }
-      
-      // Initialize predictor
-      lotteryPredictor.initialize();
-      console.log('?? Lottery predictor initialized');
-      
-    } catch (error) {
-      console.error('Service initialization failed:', error);
-      throw error;
-    }
-  };
-
-  const loadInitialData = async () => {
-    setDataStatus('?? Loading lottery data...');
-    
-    try {
-      // Load current jackpot data
-      await loadJackpotData();
-      
-      // Load historical data
-      await loadHistoricalData();
-      
-    } catch (error) {
-      console.error('Initial data loading failed:', error);
-      logError('Data Loading', error);
-      throw error;
-    }
-  };
-
-  // ===========================================================================
-  // DATA LOADING FUNCTIONS
+  // ENHANCED DATA FETCHING
   // ===========================================================================
   
-  const loadJackpotData = async () => {
-    try {
-      setDataStatus('?? Fetching current jackpot...');
-      
-      const jackpotData = await powerballAPI.fetchCurrentData();
-      
-      if (jackpotData.success) {
-        setCurrentJackpot(jackpotData.data.jackpot);
-        setNextDrawDate(jackpotData.data.nextDrawing);
-        setLiveDataAvailable(true);
-        setLastUpdated(new Date().toLocaleString());
-        
-        console.log('?? Jackpot data loaded:', jackpotData.data.jackpot?.amount);
-      } else {
-        throw new Error(jackpotData.error || 'Failed to fetch jackpot data');
-      }
-      
-    } catch (error) {
-      console.error('Jackpot data loading failed:', error);
-      setLiveDataAvailable(false);
-      logError('Jackpot Loading', error);
-      
-      // Use fallback data
-      setCurrentJackpot({
-        amount: 100000000,
-        cashValue: 50000000,
-        source: 'fallback'
-      });
-    }
-  };
-
-  const loadHistoricalData = async () => {
-    try {
-      setIsLoadingHistory(true);
-      setDataStatus('?? Loading historical data...');
-      
-      const historicalData = await powerballAPI.fetchHistoricalData(historicalRecordsLimit);
-      
-      if (historicalData.success) {
-        setHistoricalStats(historicalData.data);
-        setHistoricalDataAvailable(true);
-        
-        console.log('?? Historical data loaded:', historicalData.data.totalDrawings, 'drawings');
-      } else {
-        throw new Error(historicalData.error || 'Failed to fetch historical data');
-      }
-      
-    } catch (error) {
-      console.error('Historical data loading failed:', error);
-      setHistoricalDataAvailable(false);
-      logError('Historical Data Loading', error);
-      
-      // Generate fallback historical stats
-      setHistoricalStats(generateFallbackHistoricalStats());
-      
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
-  // ===========================================================================
-  // DATA REFRESH FUNCTIONS
-  // ===========================================================================
-  
-  const refreshAllData = useCallback(async () => {
-    if (isUpdating) return;
+  const fetchAllData = useCallback(async (forceRefresh = false) => {
+    if (isUpdating && !forceRefresh) return;
     
     setIsUpdating(true);
-    setDataStatus('?? Refreshing all data...');
+    setError(null);
+    updateCountRef.current++;
+    
+    const updateId = updateCountRef.current;
+    const startTime = performance.now();
     
     try {
-      // Refresh jackpot data
-      await loadJackpotData();
+      setDataStatus('?? Connecting to data sources...');
       
-      // Refresh historical data if needed
-      if (Date.now() - getLastHistoricalRefresh() > 24 * 60 * 60 * 1000) {
-        await loadHistoricalData();
+      // Parallel data fetching with enhanced error handling
+      const [jackpotResult, historicalResult] = await Promise.allSettled([
+        powerballAPI.fetchCurrentData().catch(err => {
+          console.warn('Jackpot fetch failed:', err);
+          return { 
+            success: false, 
+            error: err.message,
+            fallback: {
+              jackpot: {
+                amount: 100000000 + Math.floor(Math.random() * 400000000),
+                cashValue: null,
+                nextDrawing: getNextDrawDate(),
+                source: 'fallback'
+              }
+            }
+          };
+        }),
+        powerballAPI.fetchHistoricalData(500).catch(err => {
+          console.warn('Historical fetch failed:', err);
+          return {
+            success: false,
+            error: err.message,
+            fallback: generateFallbackHistoricalData()
+          };
+        })
+      ]);
+
+      // Check if this update is still current
+      if (updateCountRef.current !== updateId) {
+        console.log('?? Update superseded, ignoring results');
+        return;
       }
-      
-      setDataStatus('? Data refreshed successfully');
+
+      // Process jackpot data
+      if (jackpotResult.status === 'fulfilled') {
+        const jackpotData = jackpotResult.value;
+        if (jackpotData.success && jackpotData.data) {
+          setCurrentJackpot(jackpotData.data.jackpot);
+          setNextDrawDate(jackpotData.data.jackpot.nextDrawing);
+          setLiveDataAvailable(true);
+          setDataStatus('? Live data connected');
+        } else if (jackpotData.fallback) {
+          setCurrentJackpot(jackpotData.fallback.jackpot);
+          setNextDrawDate(jackpotData.fallback.jackpot.nextDrawing);
+          setLiveDataAvailable(false);
+          setDataStatus('?? Using fallback data - live data unavailable');
+        }
+      }
+
+      // Process historical data
+      if (historicalResult.status === 'fulfilled') {
+        const historicalData = historicalResult.value;
+        if (historicalData.success && historicalData.data) {
+          setHistoricalStats({
+            totalDrawings: historicalData.data.drawings.length,
+            dateRange: historicalData.data.dateRange,
+            source: historicalData.source
+          });
+        } else if (historicalData.fallback) {
+          setHistoricalStats(historicalData.fallback);
+        }
+      }
+
+      // Update performance metrics
+      const endTime = performance.now();
+      setSystemPerformance({
+        lastUpdate: new Date().toISOString(),
+        updateDuration: Math.round(endTime - startTime),
+        totalUpdates: updateCountRef.current,
+        uptime: Math.round(endTime - initStartTime.current),
+        dataAccuracy: liveDataAvailable ? 'live' : 'fallback',
+        memoryUsage: getMemoryUsage()
+      });
+
+      setLastUpdated(new Date().toISOString());
       
     } catch (error) {
-      console.error('Data refresh failed:', error);
-      logError('Data Refresh', error);
-      setDataStatus(`? Refresh failed: ${error.message}`);
+      console.error('? Data fetch failed:', error);
+      setError(error);
+      setDataStatus('? Data fetch failed');
+      addToErrorLog(error);
     } finally {
       setIsUpdating(false);
     }
-  }, [isUpdating, historicalRecordsLimit]);
+  }, [isUpdating, liveDataAvailable]);
 
-  // ===========================================================================
-  // CONFIGURATION HANDLERS
-  // ===========================================================================
-  
-  const handleDataLimitChange = useCallback(async (newLimit) => {
-    if (newLimit === historicalRecordsLimit) return;
-    
-    setHistoricalRecordsLimit(newLimit);
-    
-    // Reload historical data with new limit
-    try {
-      await loadHistoricalData();
-    } catch (error) {
-      console.error('Failed to reload historical data:', error);
-      logError('Data Limit Change', error);
-    }
-  }, [historicalRecordsLimit]);
-
-  // ===========================================================================
-  // TAB RENDERING SYSTEM
-  // ===========================================================================
-  
-  const renderTabContent = () => {
-    const commonProps = {
-      liveDataAvailable,
-      historicalDataAvailable,
-      isUpdating,
-      dataStatus,
-      setDataStatus,
-      lastUpdated,
-      systemPerformance
-    };
-
-    switch (activeTab) {
-      case 'quick-selection':
-        return (
-          <QuickSelection
-            {...commonProps}
-            historicalStats={historicalStats}
-            currentJackpot={currentJackpot}
-            isLoadingHistory={isLoadingHistory}
-            historicalRecordsLimit={historicalRecordsLimit}
-            onDataLimitChange={handleDataLimitChange}
-          />
-        );
-        
-      case 'calculator':
-        return (
-          <NumberSelector
-            {...commonProps}
-            historicalStats={historicalStats}
-          />
-        );
-        
-      case 'tax-calculator':
-        return (
-          <TaxCalculator 
-            {...commonProps}
-            currentJackpot={currentJackpot}
-          />
-        );
-        
-      case 'analysis':
-        return (
-          <DataAnalysis
-            {...commonProps}
-            historicalStats={historicalStats}
-            errorLog={errorLog}
-          />
-        );
-        
-      default:
-        return (
-          <div className="card text-center py-12">
-            <div className="text-6xl mb-4">??</div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">
-              Select a Tab
-            </h3>
-            <p className="text-gray-600">
-              Choose a feature from the navigation above to get started
-            </p>
-          </div>
-        );
-    }
-  };
+  // Debounced refresh function
+  const debouncedRefresh = useCallback(
+    debounce(() => fetchAllData(true), 1000),
+    [fetchAllData]
+  );
 
   // ===========================================================================
   // UTILITY FUNCTIONS
   // ===========================================================================
   
-  const setupPerformanceMonitoring = () => {
-    const performance = {
-      startTime: Date.now(),
-      memoryUsage: getMemoryUsage(),
-      apiCallCount: 0,
-      errorCount: errorLog.length
-    };
+  const getNextDrawDate = () => {
+    const now = new Date();
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const currentDay = now.getDay();
     
-    setSystemPerformance(performance);
+    // Powerball draws on Monday, Wednesday, and Saturday
+    const drawDays = [1, 3, 6]; // Monday, Wednesday, Saturday
     
-    // Update performance metrics every minute
-    const performanceInterval = setInterval(() => {
-      setSystemPerformance(prev => ({
-        ...prev,
-        uptime: Date.now() - prev.startTime,
-        memoryUsage: getMemoryUsage(),
-        errorCount: errorLog.length
-      }));
-    }, 60000);
+    let nextDrawDay = drawDays.find(day => day > currentDay);
+    if (!nextDrawDay) {
+      nextDrawDay = drawDays[0]; // Next Monday
+    }
     
-    return () => clearInterval(performanceInterval);
-  };
-
-  const logError = (category, error) => {
-    const errorEntry = {
-      id: Date.now(),
-      category,
-      message: error.message,
-      timestamp: new Date().toISOString(),
-      stack: error.stack
-    };
+    const daysUntilDraw = nextDrawDay > currentDay 
+      ? nextDrawDay - currentDay 
+      : 7 - currentDay + nextDrawDay;
     
-    setErrorLog(prev => [errorEntry, ...prev.slice(0, 49)]); // Keep last 50 errors
+    const nextDraw = new Date(now);
+    nextDraw.setDate(now.getDate() + daysUntilDraw);
+    nextDraw.setHours(23, 0, 0, 0); // 11 PM ET
+    
+    return nextDraw.toISOString();
   };
 
   const getMemoryUsage = () => {
-    if (typeof performance !== 'undefined' && performance.memory) {
+    if (performance.memory) {
       return {
         used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
         total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024),
@@ -369,128 +221,218 @@ export default function LotterySystem() {
     return null;
   };
 
-  const getLastHistoricalRefresh = () => {
-    try {
-      return parseInt(localStorage.getItem('lcv2_last_historical_refresh') || '0');
-    } catch {
-      return 0;
-    }
+  const addToErrorLog = (error) => {
+    const errorEntry = {
+      timestamp: new Date().toISOString(),
+      message: error.message,
+      stack: error.stack,
+      type: error.name || 'Unknown'
+    };
+    
+    setErrorLog(prev => [errorEntry, ...prev.slice(0, 9)]); // Keep last 10 errors
   };
 
-  const generateFallbackHistoricalStats = () => {
+  const generateFallbackHistoricalData = () => {
     return {
       totalDrawings: 500,
       dateRange: {
         earliest: '2022-01-01',
         latest: new Date().toISOString().split('T')[0]
       },
-      hotNumbers: [7, 14, 21, 28, 35],
-      coldNumbers: [13, 26, 39, 52, 65],
-      averageJackpot: 75000000,
-      source: 'fallback'
+      source: 'fallback',
+      lastUpdated: new Date().toISOString()
     };
   };
 
   // ===========================================================================
-  // RENDER COMPONENT
+  // EFFECTS
+  // ===========================================================================
+  
+  useEffect(() => {
+    // Initial data load
+    fetchAllData();
+    
+    // Auto-refresh every 30 minutes
+    const refreshInterval = setInterval(() => {
+      fetchAllData(false);
+    }, 30 * 60 * 1000);
+    
+    return () => clearInterval(refreshInterval);
+  }, [fetchAllData]);
+
+  useEffect(() => {
+    // Initialize performance monitoring
+    initStartTime.current = performance.now();
+    
+    // Cleanup on unmount
+    return () => {
+      console.log('?? LotterySystem component unmounted');
+    };
+  }, []);
+
+  // ===========================================================================
+  // RENDER METHODS
+  // ===========================================================================
+  
+  const renderCurrentTab = () => {
+    const currentTabConfig = tabs.find(tab => tab.id === currentTab);
+    if (!currentTabConfig) return null;
+
+    const Component = currentTabConfig.component;
+    
+    const commonProps = {
+      liveDataAvailable,
+      historicalStats,
+      lastUpdated,
+      systemPerformance,
+      errorLog,
+      dataStatus,
+      setDataStatus,
+      onRefresh: debouncedRefresh
+    };
+
+    switch (currentTab) {
+      case 'quick':
+        return (
+          <Component
+            {...commonProps}
+            currentJackpot={currentJackpot}
+            nextDrawDate={nextDrawDate}
+            isUpdating={isUpdating}
+          />
+        );
+      case 'analysis':
+        return (
+          <Component
+            {...commonProps}
+            historicalDataAvailable={!!historicalStats}
+          />
+        );
+      case 'tax':
+        return (
+          <Component
+            {...commonProps}
+            currentJackpot={currentJackpot}
+          />
+        );
+      case 'about':
+        return (
+          <Component
+            {...commonProps}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  // ===========================================================================
+  // MAIN RENDER
   // ===========================================================================
   
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        
-        {/* Header Component */}
-        <Header
-          liveDataAvailable={liveDataAvailable}
-          currentJackpot={currentJackpot}
-          nextDrawDate={nextDrawDate}
-          isUpdating={isUpdating}
-          onRefresh={refreshAllData}
-          systemPerformance={systemPerformance}
-        />
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          
+          {/* Enhanced Header */}
+          <Header
+            liveDataAvailable={liveDataAvailable}
+            currentJackpot={currentJackpot}
+            nextDrawDate={nextDrawDate}
+            isUpdating={isUpdating}
+            onRefresh={debouncedRefresh}
+            systemPerformance={systemPerformance}
+          />
 
-        {/* Status Banner */}
-        {dataStatus && (
-          <div className={`banner mb-6 ${
-            dataStatus.includes('?') ? 'success-banner' :
-            dataStatus.includes('?') ? 'error-banner' : 
-            dataStatus.includes('??') ? 'warning-banner' : 'info-banner'
-          }`}>
-            <div className="flex items-center gap-2">
-              <span>{dataStatus}</span>
-              {isUpdating && (
-                <div className="loading-spinner ml-2" />
-              )}
+          {/* Status Banner */}
+          {dataStatus && (
+            <div className={`status-banner mb-6 ${
+              dataStatus.includes('?') ? 'success-banner' :
+              dataStatus.includes('?') ? 'error-banner' :
+              dataStatus.includes('??') ? 'warning-banner' : 'info-banner'
+            }`}>
+              <div className="flex items-center justify-center gap-2">
+                <span>{dataStatus}</span>
+                {isUpdating && <div className="loading-spinner ml-2" />}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Tab Navigation */}
-        <div className="mb-6">
-          <nav className="flex space-x-1 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
-            {tabConfig.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium text-sm transition-all duration-200 ${
-                  activeTab === tab.id 
-                    ? 'bg-blue-500 text-white shadow-md transform scale-105' 
-                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                }`}
-                aria-label={`Switch to ${tab.label} - ${tab.description}`}
-              >
-                <span className="text-lg">{tab.icon}</span>
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            ))}
-          </nav>
+          {/* Enhanced Navigation */}
+          <div className="mb-8">
+            <nav className="flex space-x-1 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-1">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(tab.id)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-4 rounded-lg font-medium text-sm transition-all duration-300 ${
+                    currentTab === tab.id
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 shadow-blue-200'
+                      : 'text-gray-600 hover:text-gray-800 hover:bg-white/60 hover:shadow-md'
+                  }`}
+                  aria-label={`Switch to ${tab.label} - ${tab.description}`}
+                  title={tab.description}
+                >
+                  <span className="text-lg">{tab.icon}</span>
+                  <span className="hidden sm:inline font-semibold">{tab.label}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* Main Content Area */}
+          <main className="animate-fade-in">
+            {renderCurrentTab()}
+          </main>
+
+          {/* Enhanced Footer */}
+          <footer className="mt-12 text-center text-sm text-gray-500 border-t border-gray-200/50 pt-8 bg-white/30 backdrop-blur-sm rounded-lg">
+            <div className="space-y-3">
+              <p className="flex items-center justify-center gap-2">
+                <span className="text-lg">??</span>
+                <span className="font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  LCv2 - Advanced Lottery Intelligence System
+                </span>
+                <span className="claude-badge bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-1 rounded-full text-xs">
+                  v{APP_CONFIG.version}
+                </span>
+              </p>
+              
+              <div className="flex items-center justify-center gap-6 text-xs">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-green-400 to-green-600"></span>
+                  Data: <span className={liveDataAvailable ? 'text-green-600 font-medium' : 'text-orange-600'}>
+                    {liveDataAvailable ? 'Live Connected' : 'Offline Mode'}
+                  </span>
+                </span>
+                
+                {historicalStats && (
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-400 to-blue-600"></span>
+                    History: <span className="text-blue-600 font-medium">
+                      {historicalStats.totalDrawings} drawings
+                    </span>
+                  </span>
+                )}
+                
+                {systemPerformance && (
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-400 to-purple-600"></span>
+                    Uptime: <span className="text-purple-600 font-medium">
+                      {Math.round((systemPerformance.uptime || 0) / 1000 / 60)}m
+                    </span>
+                  </span>
+                )}
+              </div>
+              
+              <p className="text-xs opacity-75 bg-gradient-to-r from-gray-500 to-gray-600 bg-clip-text text-transparent">
+                ??? Modular Architecture • ? React + Vite • ?? Claude Sonnet 4 Compatible • ?? Educational Use Only
+              </p>
+            </div>
+          </footer>
         </div>
-
-        {/* Tab Content */}
-        <main className="animate-fade-in">
-          {renderTabContent()}
-        </main>
-
-        {/* Footer */}
-        <footer className="mt-12 text-center text-sm text-gray-500 border-t border-gray-200 pt-6">
-          <div className="space-y-2">
-            <p className="flex items-center justify-center gap-2">
-              <span className="text-lg">??</span>
-              <span className="font-semibold">LCv2 - Advanced Lottery Intelligence System</span>
-              <span className="claude-badge">v2.0.0</span>
-            </p>
-            
-            <div className="flex items-center justify-center gap-4 text-xs">
-              <span className="flex items-center gap-1">
-                ?? Data: <span className={liveDataAvailable ? 'text-green-600' : 'text-orange-600'}>
-                  {liveDataAvailable ? 'Live Connected' : 'Offline Mode'}
-                </span>
-              </span>
-              
-              {historicalStats && (
-                <span className="flex items-center gap-1">
-                  ?? History: <span className="text-blue-600">
-                    {historicalStats.totalDrawings} drawings
-                  </span>
-                </span>
-              )}
-              
-              {systemPerformance && (
-                <span className="flex items-center gap-1">
-                  ? Uptime: <span className="text-purple-600">
-                    {Math.round((systemPerformance.uptime || 0) / 1000 / 60)}m
-                  </span>
-                </span>
-              )}
-            </div>
-            
-            <p className="text-xs opacity-75">
-              ??? Modular Architecture • ? React + Vite • ?? Claude Sonnet 4 Compatible • ?? Educational Use Only
-            </p>
-
-          </div>
-        </footer>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }

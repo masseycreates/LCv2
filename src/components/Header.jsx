@@ -1,261 +1,278 @@
-// LCv2 Header Component - Enhanced & Modular
-import React, { useState, useEffect, useMemo } from 'react';
-import { formatJackpot, formatCurrency, calculateNextDrawing } from '../utils/helpers.js';
+// src/components/Header.jsx - Enhanced Header with Modern Design
+import React, { useState, useEffect } from 'react';
+import { formatCurrency } from '../utils/helpers.js';
+import { APP_CONFIG } from '../utils/constants.js';
 
-export default function Header({ 
-  liveDataAvailable, 
-  currentJackpot, 
-  nextDrawDate, 
-  isUpdating, 
+export default function Header({
+  liveDataAvailable,
+  currentJackpot,
+  nextDrawDate,
+  isUpdating,
   onRefresh,
-  systemPerformance 
+  systemPerformance
 }) {
-  
-  // ===========================================================================
-  // LOCAL STATE
-  // ===========================================================================
-  
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [showSystemInfo, setShowSystemInfo] = useState(false);
+  const [timeUntilDraw, setTimeUntilDraw] = useState('');
 
-  // ===========================================================================
-  // EFFECTS
-  // ===========================================================================
-  
   // Update current time every second
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, []);
 
-  // ===========================================================================
-  // COMPUTED VALUES
-  // ===========================================================================
-  
-  const jackpotDisplay = useMemo(() => {
-    if (!currentJackpot) {
-      return {
-        amount: 'Loading...',
-        cashValue: 'Loading...',
-        isLoading: true
-      };
-    }
-    
-    return {
-      amount: formatJackpot(currentJackpot.amount),
-      cashValue: formatCurrency(currentJackpot.cashValue || currentJackpot.amount * 0.6),
-      isLoading: false,
-      isLive: liveDataAvailable && !currentJackpot.source
-    };
-  }, [currentJackpot, liveDataAvailable]);
+  // Calculate time until next drawing
+  useEffect(() => {
+    if (!nextDrawDate) return;
 
-  const drawingInfo = useMemo(() => {
-    if (nextDrawDate) {
-      return {
-        date: nextDrawDate.date || nextDrawDate,
-        time: nextDrawDate.time || '10:59 PM ET',
-        dayOfWeek: nextDrawDate.dayOfWeek || 'Mon/Wed/Sat'
-      };
-    }
-    
-    const calculated = calculateNextDrawing();
-    return {
-      date: calculated.date,
-      time: calculated.time,
-      dayOfWeek: calculated.dayOfWeek
+    const calculateTimeUntilDraw = () => {
+      const now = new Date();
+      const draw = new Date(nextDrawDate);
+      const diff = draw.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setTimeUntilDraw('Drawing completed');
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      if (days > 0) {
+        setTimeUntilDraw(`${days}d ${hours}h ${minutes}m`);
+      } else if (hours > 0) {
+        setTimeUntilDraw(`${hours}h ${minutes}m ${seconds}s`);
+      } else {
+        setTimeUntilDraw(`${minutes}m ${seconds}s`);
+      }
     };
+
+    calculateTimeUntilDraw();
+    const timer = setInterval(calculateTimeUntilDraw, 1000);
+
+    return () => clearInterval(timer);
   }, [nextDrawDate]);
 
-  const systemStatusDisplay = useMemo(() => {
-    if (!systemPerformance) return null;
+  const formatJackpotAmount = (amount) => {
+    if (!amount) return 'Loading...';
     
-    const { uptime, memoryUsage, errorCount } = systemPerformance;
-    
+    if (amount >= 1000000) {
+      return `$${(amount / 1000000).toFixed(0)}M`;
+    } else if (amount >= 1000) {
+      return `$${(amount / 1000).toFixed(0)}K`;
+    } else {
+      return formatCurrency(amount);
+    }
+  };
+
+  const getConnectionStatusInfo = () => {
+    if (liveDataAvailable) {
+      return {
+        icon: '🟢',
+        text: 'Live Data',
+        className: 'text-green-600 font-medium',
+        description: 'Connected to live lottery data sources'
+      };
+    } else {
+      return {
+        icon: '🟡',
+        text: 'Offline Mode',
+        className: 'text-amber-600 font-medium',
+        description: 'Using cached or fallback data'
+      };
+    }
+  };
+
+  const getNextDrawInfo = () => {
+    if (!nextDrawDate) return null;
+
+    const drawDate = new Date(nextDrawDate);
+    const dayName = drawDate.toLocaleDateString('en-US', { weekday: 'long' });
+    const timeString = drawDate.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+
     return {
-      uptime: uptime ? `${Math.round(uptime / 1000 / 60)}m` : '0m',
-      memory: memoryUsage ? `${memoryUsage.used}MB` : 'N/A',
-      errors: errorCount || 0,
-      status: errorCount > 5 ? 'warning' : 'healthy'
+      dayName,
+      timeString,
+      timeUntilDraw
     };
-  }, [systemPerformance]);
-
-  // ===========================================================================
-  // EVENT HANDLERS
-  // ===========================================================================
-  
-  const handleRefresh = () => {
-    if (isUpdating || !onRefresh) return;
-    onRefresh();
   };
 
-  const toggleSystemInfo = () => {
-    setShowSystemInfo(!showSystemInfo);
-  };
+  const connectionStatus = getConnectionStatusInfo();
+  const drawInfo = getNextDrawInfo();
 
-  // ===========================================================================
-  // RENDER HELPERS
-  // ===========================================================================
-  
-  const renderJackpotSection = () => (
-    <div className="text-center md:text-left">
-      <div className="mb-2">
-        <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
-          Current Powerball Jackpot
-        </h1>
-        <div className="flex items-center justify-center md:justify-start gap-2 text-sm">
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            jackpotDisplay.isLive 
-              ? 'bg-green-500/20 text-green-100' 
-              : 'bg-yellow-500/20 text-yellow-100'
-          }`}>
-            {jackpotDisplay.isLive ? '?? Live Data' : '?? Offline'}
-          </span>
-          <span className="text-white/80">
-            Updated: {currentTime.toLocaleTimeString()}
-          </span>
-        </div>
-      </div>
-      
-      <div className="space-y-1">
-        <div className={`text-4xl md:text-5xl font-black text-white transition-all duration-300 ${
-          jackpotDisplay.isLoading ? 'animate-pulse' : ''
-        }`}>
-          {jackpotDisplay.amount}
-        </div>
-        
-        <div className="text-lg text-white/90">
-          Cash Value: <span className="font-semibold">{jackpotDisplay.cashValue}</span>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderDrawingInfo = () => (
-    <div className="text-center md:text-right">
-      <div className="space-y-2">
-        <div>
-          <div className="text-lg font-semibold text-white mb-1">
-            Next Drawing
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl font-bold text-white">
-              {drawingInfo.date}
-            </div>
-            <div className="text-sm text-white/90">
-              {drawingInfo.time}
-            </div>
-            <div className="text-xs text-white/80">
-              Drawings: {drawingInfo.dayOfWeek}
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex justify-center md:justify-end">
-          <button
-            onClick={handleRefresh}
-            disabled={isUpdating}
-            className={`btn btn-sm px-3 py-2 bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all duration-200 ${
-              isUpdating ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
-            }`}
-            aria-label={isUpdating ? 'Refreshing data...' : 'Refresh lottery data'}
-          >
-            <span className={`text-sm ${isUpdating ? 'animate-spin' : ''}`}>
-              {isUpdating ? '??' : '??'}
-            </span>
-            <span className="hidden sm:inline ml-1">
-              {isUpdating ? 'Updating...' : 'Refresh'}
-            </span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderSystemStatus = () => (
-    <div className="mt-4 pt-4 border-t border-white/20">
-      <button
-        onClick={toggleSystemInfo}
-        className="flex items-center justify-between w-full text-left text-white/90 hover:text-white transition-colors"
-      >
-        <span className="text-sm font-medium">System Status</span>
-        <span className={`text-xs transition-transform duration-200 ${
-          showSystemInfo ? 'rotate-180' : ''
-        }`}>
-          ?
-        </span>
-      </button>
-      
-      {showSystemInfo && systemStatusDisplay && (
-        <div className="mt-3 grid grid-cols-3 gap-4 text-center">
-          <div className="space-y-1">
-            <div className="text-xs text-white/70">Uptime</div>
-            <div className="text-sm font-semibold text-white">
-              {systemStatusDisplay.uptime}
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-xs text-white/70">Memory</div>
-            <div className="text-sm font-semibold text-white">
-              {systemStatusDisplay.memory}
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-xs text-white/70">Errors</div>
-            <div className={`text-sm font-semibold ${
-              systemStatusDisplay.errors === 0 ? 'text-green-300' : 'text-yellow-300'
-            }`}>
-              {systemStatusDisplay.errors}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  // ===========================================================================
-  // MAIN RENDER
-  // ===========================================================================
-  
   return (
     <header className="mb-8">
-      <div className={`card overflow-hidden ${
-        liveDataAvailable ? 'gradient-bg' : 'gradient-bg-unavailable'
-      }`}>
+      {/* Main Header Card */}
+      <div className="gradient-bg rounded-2xl p-8 text-white relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-4 left-4 w-32 h-32 border-2 border-white rounded-full"></div>
+          <div className="absolute bottom-4 right-4 w-24 h-24 border-2 border-white rounded-full"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-40 border border-white rounded-full"></div>
+        </div>
+
         <div className="relative z-10">
-          
-          {/* Main Header Content */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            {renderJackpotSection()}
-            {renderDrawingInfo()}
+          {/* Top Row: Branding and Status */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+            <div className="flex items-center gap-3 mb-4 lg:mb-0">
+              <div className="text-4xl">🎰</div>
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-bold text-shadow">
+                  Advanced Lottery Intelligence
+                </h1>
+                <p className="text-white/80 text-sm lg:text-base">
+                  Powered by Claude Sonnet 4 • Modular Architecture
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Connection Status */}
+              <div 
+                className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2"
+                title={connectionStatus.description}
+              >
+                <span className="text-lg">{connectionStatus.icon}</span>
+                <span className="text-sm font-medium">{connectionStatus.text}</span>
+              </div>
+
+              {/* Refresh Button */}
+              <button
+                onClick={onRefresh}
+                disabled={isUpdating}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg px-4 py-2 transition-all duration-200 disabled:opacity-50"
+                title="Refresh data from live sources"
+              >
+                <span className={`text-lg ${isUpdating ? 'animate-spin' : ''}`}>
+                  {isUpdating ? '⟳' : '🔄'}
+                </span>
+                <span className="text-sm font-medium hidden sm:inline">
+                  {isUpdating ? 'Updating...' : 'Refresh'}
+                </span>
+              </button>
+            </div>
           </div>
 
-          {/* System Information (Collapsible) */}
-          {systemPerformance && renderSystemStatus()}
+          {/* Main Content: Jackpot and Draw Info */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Current Jackpot */}
+            <div className="lg:col-span-2">
+              <div className="mb-2">
+                <span className="text-white/80 text-sm uppercase tracking-wider font-medium">
+                  Current Jackpot
+                </span>
+              </div>
+              <div className="text-4xl lg:text-6xl font-black tracking-tight text-shadow mb-2">
+                {formatJackpotAmount(currentJackpot?.amount)}
+              </div>
+              {currentJackpot?.cashValue && (
+                <div className="text-white/90 text-sm lg:text-base">
+                  Cash Value: <span className="font-semibold">
+                    {formatJackpotAmount(currentJackpot.cashValue)}
+                  </span>
+                </div>
+              )}
+              {currentJackpot?.source && (
+                <div className="text-white/60 text-xs mt-1">
+                  Source: {currentJackpot.source === 'fallback' ? 'Offline Mode' : 'Live Data'}
+                </div>
+              )}
+            </div>
 
-          {/* Architecture Badge */}
-          <div className="absolute top-4 right-4 hidden lg:block">
-            <div className="flex flex-col items-end space-y-1">
-              <div className="hybrid-badge">
-                ??? Modular Architecture
+            {/* Next Drawing Info */}
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4">
+              <div className="text-white/80 text-sm uppercase tracking-wider font-medium mb-3">
+                Next Drawing
               </div>
-              <div className="claude-badge">
-                ?? Claude Sonnet 4 Ready
-              </div>
+              
+              {drawInfo ? (
+                <div className="space-y-2">
+                  <div className="text-white font-semibold text-lg">
+                    {drawInfo.dayName}
+                  </div>
+                  <div className="text-white/90 text-sm">
+                    {drawInfo.timeString}
+                  </div>
+                  {drawInfo.timeUntilDraw && (
+                    <div className="text-white/80 text-xs font-mono bg-white/10 rounded px-2 py-1 inline-block">
+                      {drawInfo.timeUntilDraw}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-white/60">
+                  Loading draw information...
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Row: System Stats */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 pt-4 border-t border-white/20">
+            <div className="flex items-center gap-4 text-white/80 text-xs mb-2 sm:mb-0">
+              <span>v{APP_CONFIG.version}</span>
+              <span>•</span>
+              <span>
+                {currentTime.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit'
+                })}
+              </span>
+              {systemPerformance?.uptime && (
+                <>
+                  <span>•</span>
+                  <span>
+                    Uptime: {Math.round(systemPerformance.uptime / 1000 / 60)}m
+                  </span>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 text-white/60 text-xs">
+              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+              <span>System Operational</span>
             </div>
           </div>
         </div>
       </div>
-      
-      {/* Mobile Architecture Info */}
-      <div className="lg:hidden mt-4 flex justify-center space-x-2">
-        <div className="hybrid-badge text-xs">
-          ??? Modular
+
+      {/* Quick Stats Bar */}
+      <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 text-center border border-white/20 hover:bg-white/90 transition-colors">
+          <div className="text-2xl mb-1">📊</div>
+          <div className="text-sm text-gray-600 font-medium">Data Sources</div>
+          <div className="text-lg font-bold text-gray-800">
+            {liveDataAvailable ? 'Live' : 'Cached'}
+          </div>
         </div>
-        <div className="claude-badge text-xs">
-          ?? Sonnet 4
+
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 text-center border border-white/20 hover:bg-white/90 transition-colors">
+          <div className="text-2xl mb-1">🧠</div>
+          <div className="text-sm text-gray-600 font-medium">AI Engine</div>
+          <div className="text-lg font-bold text-gray-800">Ready</div>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 text-center border border-white/20 hover:bg-white/90 transition-colors">
+          <div className="text-2xl mb-1">⚡</div>
+          <div className="text-sm text-gray-600 font-medium">Algorithms</div>
+          <div className="text-lg font-bold text-gray-800">6 Active</div>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 text-center border border-white/20 hover:bg-white/90 transition-colors">
+          <div className="text-2xl mb-1">🎯</div>
+          <div className="text-sm text-gray-600 font-medium">Accuracy</div>
+          <div className="text-lg font-bold text-gray-800">
+            {liveDataAvailable ? 'Live' : 'Sim'}
+          </div>
         </div>
       </div>
     </header>
